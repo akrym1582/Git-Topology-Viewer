@@ -59,8 +59,8 @@ try {
     const transform = element.getAttribute('transform') ?? '';
     return transform.match(/translate\(([^,]+),([^\)]+)\)/)?.slice(1) ?? [];
   }));
-  if (remoteLabels.length !== 2 || remoteLabels[0][0] === remoteLabels[1][0] || remoteLabels[0][1] !== remoteLabels[1][1]) {
-    throw new Error(`Expected two remote refs on one row: ${JSON.stringify(remoteLabels)}`);
+  if (remoteLabels.length !== 2 || remoteLabels[0][0] !== remoteLabels[1][0] || remoteLabels[0][1] === remoteLabels[1][1]) {
+    throw new Error(`Expected two remote refs stacked vertically: ${JSON.stringify(remoteLabels)}`);
   }
   const refAlignment = await page.locator('.ref.localBranch').first().evaluate(element => {
     const refX = Number((element.getAttribute('transform') ?? '').match(/translate\(([^,]+)/)?.[1]);
@@ -71,31 +71,30 @@ try {
   const releaseRef = page.getByRole('button', { name: 'origin/release branch' });
   if (!(await releaseRef.textContent())?.includes('origin/release')) throw new Error('Expected the origin/release label not to be truncated');
   const releaseConnector = await page.locator('[data-ref-connector="refs/remotes/origin/release"]').getAttribute('d');
-  if (!releaseConnector?.includes('H 158 V 17')) throw new Error(`Expected origin/release to connect to its graph line: ${releaseConnector}`);
+  if (!releaseConnector?.includes('H 0 V 34')) throw new Error(`Expected origin/release to connect to its graph line: ${releaseConnector}`);
   const invalidRefNodes = await page.evaluate(() => [...document.querySelectorAll('.node')].flatMap(node => {
     const refs = [...node.querySelectorAll('.ref')];
     const circles = node.querySelectorAll('circle');
     if ((refs.length > 0 && circles.length > 0) || (refs.length === 0 && circles.length !== 1)) {
       return [{ commit: node.getAttribute('data-commit'), reason: 'node-shape' }];
     }
-    const rows = new Map();
+    const labels = [];
     for (const ref of refs) {
       const position = (ref.getAttribute('transform') ?? '').match(/translate\(([^,]+),([^\)]+)\)/)?.slice(1).map(Number);
       const type = [...ref.classList].find(value => ['tag', 'localBranch', 'remoteBranch'].includes(value));
       if (!position || !type) return [{ commit: node.getAttribute('data-commit'), reason: 'position' }];
-      const row = rows.get(type) ?? [];
-      row.push(position);
-      rows.set(type, row);
+      labels.push({ position, type });
     }
-    if (rows.size > 3 || [...rows.values()].some(row => row.some(position => position[1] !== row[0][1]))) {
-      return [{ commit: node.getAttribute('data-commit'), reason: 'rows' }];
+    if (labels.some(label => label.position[0] !== labels[0]?.position[0]) || new Set(labels.map(label => label.position[1])).size !== labels.length) {
+      return [{ commit: node.getAttribute('data-commit'), reason: 'stack' }];
     }
-    const orderedRows = ['tag', 'localBranch', 'remoteBranch'].flatMap(type => rows.has(type) ? [rows.get(type)[0][1]] : []);
-    return orderedRows.some((position, index) => index > 0 && position <= orderedRows[index - 1])
+    const typeRank = { tag: 0, localBranch: 1, remoteBranch: 2 };
+    const orderedLabels = labels.sort((left, right) => left.position[1] - right.position[1]);
+    return orderedLabels.some((label, index) => index > 0 && typeRank[label.type] < typeRank[orderedLabels[index - 1].type])
       ? [{ commit: node.getAttribute('data-commit'), reason: 'row-order' }]
       : [];
   }));
-  if (invalidRefNodes.length) throw new Error(`Expected ref nodes to use up to three ordered label rows without circles: ${JSON.stringify(invalidRefNodes)}`);
+  if (invalidRefNodes.length) throw new Error(`Expected ref nodes to use an ordered vertical label stack without circles: ${JSON.stringify(invalidRefNodes)}`);
   const overlaps = await page.evaluate(() => {
     const refs = [...document.querySelectorAll('.ref')].map(element => element.getBoundingClientRect());
     const ranges = [...document.querySelectorAll('.range')].map(element => element.getBoundingClientRect());

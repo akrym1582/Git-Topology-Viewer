@@ -90,7 +90,7 @@ function Graph({data, allowed, selected, onSelect, onContextMenu}:{data:GraphPay
     if (node.kind !== 'commit') return [];
     const layout = refLayouts.get(node.id)!;
     return layout.refs.map(({ position }) => {
-      return { x: node.x + position.x, y: node.y + position.y, width: 150, height: 28 };
+      return { x: node.x + position.x, y: node.y + position.y, width: REF_WIDTH, height: REF_HEIGHT };
     });
   }).sort((left, right) => left.x - right.x);
   const rangePositions = new Map(data.graph.nodes.filter(node => node.kind === 'range').map(node => {
@@ -127,7 +127,6 @@ function Graph({data, allowed, selected, onSelect, onContextMenu}:{data:GraphPay
 const REF_WIDTH = 150;
 const REF_HEIGHT = 28;
 const REF_ROW_GAP = 6;
-const REF_COLUMN_GAP = 8;
 const REF_ICON_CENTER_X = 14;
 const REF_TYPES: GitRef['type'][] = ['tag', 'localBranch', 'remoteBranch'];
 
@@ -137,12 +136,12 @@ interface RefLayout {
 }
 
 function layoutRefs(refs: GitRef[]): RefLayout {
-  const rows = REF_TYPES.map(type => refs.filter(ref => ref.type === type)).filter(row => row.length > 0);
+  const rows = REF_TYPES.flatMap(type => refs.filter(ref => ref.type === type));
   const firstRowY = -((rows.length * REF_HEIGHT) + ((rows.length - 1) * REF_ROW_GAP)) / 2;
-  const positionedRefs = rows.flatMap((row, rowIndex) => row.map((ref, columnIndex) => ({
+  const positionedRefs = rows.map((ref, rowIndex) => ({
     ref,
-    position: { x: -REF_ICON_CENTER_X + columnIndex * (REF_WIDTH + REF_COLUMN_GAP), y: firstRowY + rowIndex * (REF_HEIGHT + REF_ROW_GAP) }
-  })));
+    position: { x: -REF_ICON_CENTER_X, y: firstRowY + rowIndex * (REF_HEIGHT + REF_ROW_GAP) }
+  }));
   const anchor = positionedRefs[0]
     ? { x: positionedRefs[0].position.x + REF_ICON_CENTER_X, y: positionedRefs[0].position.y + REF_HEIGHT / 2 }
     : { x: 0, y: 0 };
