@@ -56,7 +56,11 @@ export class TopologyPanel {
     try {
       if (message.type === 'refresh') { this.expanded.clear(); await this.load(); }
       if (message.type === 'setViewMode') { this.mode = message.mode; this.sendGraph(); }
-      if (message.type === 'expandRange') { this.expanded.add(message.rangeId); this.sendGraph(); }
+      if (message.type === 'expandRange') {
+        if (this.expanded.has(message.rangeId)) this.expanded.delete(message.rangeId);
+        else this.expanded.add(message.rangeId);
+        this.sendGraph();
+      }
       if (message.type === 'contextMenu') this.sendContextMenu(message.nodeId, message.x, message.y);
       if (message.type === 'runContextCommand') await this.runContextCommand(message.command, message.nodeId);
       if (message.type === 'compareRefs') {

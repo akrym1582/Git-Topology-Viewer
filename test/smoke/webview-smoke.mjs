@@ -42,6 +42,17 @@ try {
   // Rendering: toolbar, refs, collapsed ranges, and vertical/horizontal SVG edges.
   if (await page.locator('.node').count() !== 6) throw new Error('Expected six commit nodes');
   if (await page.locator('.range').count() !== 2) throw new Error('Expected two collapsed ranges');
+  await page.getByRole('button', { name: 'Expand 12 commits' }).click();
+  let request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'expandRange' || request.rangeId !== 'range:main') {
+    throw new Error(`Unexpected expand range request: ${JSON.stringify(request)}`);
+  }
+  await page.getByRole('button', { name: 'Collapse 12 commits' }).click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'expandRange' || request.rangeId !== 'range:main') {
+    throw new Error(`Unexpected collapse range request: ${JSON.stringify(request)}`);
+  }
+  await page.getByRole('button', { name: 'Expand 12 commits' }).waitFor();
   await page.getByText('Remote branches').click();
   await page.locator('.ref.remoteBranch').waitFor();
   await page.screenshot({ path: join(imageDir, 'smoke-local-and-remote-branches.png'), fullPage: true });
@@ -54,7 +65,7 @@ try {
     throw new Error('The current branch checkout action should be disabled');
   }
   await page.getByRole('menuitem', { name: 'Select as Compare Base' }).click();
-  let request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'runContextCommand' || request.command !== 'selectCompareBase') {
     throw new Error(`Unexpected context command: ${JSON.stringify(request)}`);
   }

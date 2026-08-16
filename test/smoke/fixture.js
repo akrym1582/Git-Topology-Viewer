@@ -54,7 +54,8 @@ const edges = [
   [commits.release, commits.root]
 ].map(([from, to]) => ({ from, to, hiddenCommitCount: 0 }));
 
-setTimeout(() => {
+function dispatchGraph(expandedRangeIds = []) {
+  const expanded = new Set(expandedRangeIds);
   window.dispatchEvent(new MessageEvent('message', {
     data: {
       type: 'graph',
@@ -67,13 +68,31 @@ setTimeout(() => {
           { ref: 'refs/heads/develop', local: true, remote: false },
         ],
         mode: 'topology',
-        expandedRangeIds: [],
+        expandedRangeIds,
         refs,
-        graph: { nodes, edges }
+        graph: {
+          nodes: nodes.map(node => node.kind === 'range'
+            ? { ...node, range: { ...node.range, expanded: expanded.has(node.id) } }
+            : node),
+          edges
+        }
       }
     }
   }));
-}, 50);
+}
+
+setTimeout(() => dispatchGraph(), 50);
+
+const expandedRanges = new Set();
+let handledRangeRequests = 0;
+setInterval(() => {
+  const requests = window.__vscodeMessages.filter(message => message.type === 'expandRange');
+  if (requests.length <= handledRangeRequests) return;
+  const request = requests[handledRangeRequests++];
+  if (expandedRanges.has(request.rangeId)) expandedRanges.delete(request.rangeId);
+  else expandedRanges.add(request.rangeId);
+  dispatchGraph([...expandedRanges]);
+}, 20);
 
 window.__smokeComparison = {
   type: 'comparison',

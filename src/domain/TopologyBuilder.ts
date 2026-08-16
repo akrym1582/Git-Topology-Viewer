@@ -21,7 +21,7 @@ export class TopologyBuilder {
     }
     const ordered = graph.order.filter(id => visible.has(id));
     const lanes = this.assignLanes(graph, ordered, visible); const pathLanes = this.assignLanes(graph, graph.order, new Set(graph.order)); const nodes: ViewNode[] = ordered.map((id, row) => ({ id, kind: 'commit', commit: graph.nodes.get(id), lane: lanes.get(id)!, row, x: 70 + lanes.get(id)! * 150, y: 44 + row * 74 }));
-    for (const range of ranges.filter(r => !r.expanded)) {
+    for (const range of ranges) {
       const fromIndex = ordered.indexOf(range.fromCommit); const toIndex = ordered.indexOf(range.toCommit);
       if (fromIndex < 0 || toIndex < 0) continue;
       const row = (fromIndex + toIndex) / 2;
