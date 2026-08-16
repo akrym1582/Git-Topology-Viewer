@@ -38,7 +38,7 @@ const nodes = positions.map(([id, x, y, nodeRefs], row) => ({
 nodes.push(
   {
     id: 'range:main', kind: 'range', lane: 0, row: 2, x: 70, y: 310,
-    range: { id: 'range:main', fromCommit: commits.mainline, toCommit: commits.release, commits: [], count: 12, expanded: false }
+    range: { id: 'range:main', fromCommit: commits.mainline, toCommit: commits.release, commits: [commits.mainline], count: 12, expanded: false }
   },
   {
     id: 'range:feature', kind: 'range', lane: 1, row: 4, x: 220, y: 420,

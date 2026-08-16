@@ -42,7 +42,12 @@ try {
   // Rendering: toolbar, refs, collapsed ranges, and vertical/horizontal SVG edges.
   if (await page.locator('.node').count() !== 6) throw new Error('Expected six commit nodes');
   if (await page.locator('.range').count() !== 2) throw new Error('Expected two collapsed ranges');
+  if (await page.locator('.sha, .ref-sha').count() !== 0) throw new Error('Commit IDs should be hidden by default');
+  await page.getByText('Commit IDs', { exact: true }).click();
+  if (await page.locator('.ref-sha').count() !== 4) throw new Error('Expected a latest commit ID below every visible ref');
+  if (await page.locator('.sha').count() !== 0) throw new Error('Collapsed commits should not expose commit IDs');
   await page.getByRole('button', { name: 'Expand 12 commits' }).click();
+  await page.locator('[data-commit="e93b2101234567890"] .sha').waitFor();
   let request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'expandRange' || request.rangeId !== 'range:main') {
     throw new Error(`Unexpected expand range request: ${JSON.stringify(request)}`);
