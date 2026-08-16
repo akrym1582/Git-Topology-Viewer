@@ -48,7 +48,12 @@ try {
   // Rendering: toolbar, refs, collapsed ranges, and vertical/horizontal SVG edges.
   if (await page.locator('.node').count() !== 6) throw new Error('Expected six commit nodes');
   if (await page.locator('.range').count() !== 2) throw new Error('Expected two collapsed ranges');
+  if (await page.locator('.sha, .ref-sha').count() !== 0) throw new Error('Commit IDs should be hidden by default');
+  await page.getByText('Commit IDs', { exact: true }).click();
+  if (await page.locator('.ref-sha').count() !== 4) throw new Error('Expected a latest commit ID below every visible ref');
+  if (await page.locator('.sha').count() !== 0) throw new Error('Collapsed commits should not expose commit IDs');
   await page.getByRole('button', { name: 'Expand 12 commits' }).click();
+  await page.locator('[data-commit="e93b2101234567890"] .sha').waitFor();
   let request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'expandRange' || request.rangeId !== 'range:main') {
     throw new Error(`Unexpected expand range request: ${JSON.stringify(request)}`);
@@ -76,8 +81,13 @@ try {
   if (refAlignment !== 0) throw new Error(`Expected the graph line to cross the ref icon center, got ${refAlignment}`);
   const releaseRef = page.getByRole('button', { name: 'origin/release branch' });
   if (!(await releaseRef.textContent())?.includes('origin/release')) throw new Error('Expected the origin/release label not to be truncated');
-  const releaseConnector = await page.locator('[data-ref-connector="refs/remotes/origin/release"]').getAttribute('d');
-  if (!releaseConnector?.includes('H 0 V 34')) throw new Error(`Expected origin/release to connect to its graph line: ${releaseConnector}`);
+  const releaseConnector = await page.locator('[data-ref-connector="refs/remotes/origin/release"]').evaluate(element => {
+    const ref = document.querySelector('[aria-label="origin/release branch"]');
+    const position = (ref?.getAttribute('transform') ?? '').match(/translate\(([^,]+),([^\)]+)\)/)?.slice(1).map(Number);
+    const iconY = Number(ref?.querySelector('.ref-icon')?.getAttribute('y'));
+    return { d: element.getAttribute('d'), expected: position ? `H ${position[0] + 14} V ${position[1] + iconY - 5}` : '' };
+  });
+  if (!releaseConnector.d?.includes(releaseConnector.expected)) throw new Error(`Expected origin/release to connect to its graph line: ${releaseConnector.d}`);
   const invalidRefNodes = await page.evaluate(() => [...document.querySelectorAll('.node')].flatMap(node => {
     const refs = [...node.querySelectorAll('.ref')];
     const circles = node.querySelectorAll('circle');
