@@ -88,3 +88,14 @@ window.__smokeComparison = {
     onlyRight: []
   }
 };
+
+window.__smokeRefLog = {
+  type: 'refLog',
+  payload: {
+    ref: 'refs/heads/main',
+    commits: [
+      { id: commits.head, subject: 'Polish authentication flow' },
+      { id: commits.mainline, subject: 'Merge feature/login' }
+    ]
+  }
+};

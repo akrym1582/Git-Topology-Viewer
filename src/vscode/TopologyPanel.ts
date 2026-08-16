@@ -48,7 +48,15 @@ export class TopologyPanel {
       if (message.type === 'refresh') { this.expanded.clear(); await this.load(); }
       if (message.type === 'setViewMode') { this.mode = message.mode; this.sendGraph(); }
       if (message.type === 'expandRange') { this.expanded.add(message.rangeId); this.sendGraph(); }
-      if (message.type === 'compareRefs') this.post({ type: 'comparison', payload: await this.diff.compare(message.left, message.right, message.mode) });
+      if (message.type === 'compareRefs') {
+        this.assertKnownRef(message.left);
+        this.assertKnownRef(message.right);
+        this.post({ type: 'comparison', payload: await this.diff.compare(message.left, message.right, message.mode) });
+      }
+      if (message.type === 'showRefLog') {
+        this.assertKnownRef(message.ref);
+        this.post({ type: 'refLog', payload: { ref: message.ref, commits: await this.diff.log(message.ref) } });
+      }
       if (message.type === 'openDiff') {
         const left = GitContentProvider.uri(message.left, message.path, 'left', message.status !== 'D');
         const rightPath = message.oldPath ?? message.path;
@@ -57,6 +65,11 @@ export class TopologyPanel {
       }
       if (message.type === 'copy') await vscode.env.clipboard.writeText(message.value);
     } catch (e) { this.post({ type: 'error', message: e instanceof Error ? e.message : String(e) }); }
+  }
+  private assertKnownRef(ref: string): void {
+    if (!this.refs.some(candidate => candidate.fullName === ref)) {
+      throw new Error('The selected ref no longer exists. Refresh the viewer and try again.');
+    }
   }
   private post(value: unknown) { void this.panel.webview.postMessage(value); }
   private html(webview: vscode.Webview, extensionUri: vscode.Uri): string {

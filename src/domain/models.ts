@@ -11,4 +11,5 @@ export interface ViewGraph { nodes: ViewNode[]; edges: ViewEdge[] }
 export interface BranchComparison { left: string; right: string; mode: 'divergence' | 'snapshot'; mergeBases: string[]; ahead: number; behind: number; additions: number; deletions: number; files: ChangedFile[]; onlyLeft: CommitInfo[]; onlyRight: CommitInfo[] }
 export interface ChangedFile { status: string; path: string; oldPath?: string }
 export interface CommitInfo { id: string; subject: string }
+export interface RefLog { ref: string; commits: CommitInfo[] }
 export interface GraphPayload { graph: ViewGraph; refs: GitRef[]; repository: string; mode: ViewMode; expandedRangeIds: string[] }
