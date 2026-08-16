@@ -7,6 +7,7 @@ import { DiffService } from '../git/DiffService';
 import { TopologyBuilder } from '../domain/TopologyBuilder';
 import { CommitGraph, GitRef, ViewMode } from '../domain/models';
 import { GitContentProvider } from './GitContentProvider';
+import { isWebviewRequest, WebviewRequest } from './messages';
 
 export class TopologyPanel {
   private static current: TopologyPanel | undefined;
@@ -15,7 +16,7 @@ export class TopologyPanel {
   private readonly diff: DiffService; private readonly disposables: vscode.Disposable[] = [];
   private constructor(private panel: vscode.WebviewPanel, private git: GitClient, private root: string, extensionUri: vscode.Uri) {
     this.diff = new DiffService(git); panel.webview.html = this.html(panel.webview, extensionUri);
-    panel.webview.onDidReceiveMessage(m => this.message(m), undefined, this.disposables);
+    panel.webview.onDidReceiveMessage((message: unknown) => this.receiveMessage(message), undefined, this.disposables);
     panel.onDidDispose(() => { this.disposables.forEach(d => d.dispose()); TopologyPanel.current = undefined; });
     this.load();
   }
@@ -35,15 +36,23 @@ export class TopologyPanel {
     if (!this.graph) return;
     this.post({ type: 'graph', payload: { graph: new TopologyBuilder().build(this.graph, this.mode, this.expanded), refs: this.refs, repository: path.basename(this.root), mode: this.mode, expandedRangeIds: [...this.expanded] } });
   }
-  private async message(message: any) {
+  private receiveMessage(message: unknown): void {
+    if (!isWebviewRequest(message)) {
+      this.post({ type: 'error', message: 'The webview sent an invalid request. Refresh the viewer and try again.' });
+      return;
+    }
+    void this.message(message);
+  }
+  private async message(message: WebviewRequest) {
     try {
       if (message.type === 'refresh') { this.expanded.clear(); await this.load(); }
       if (message.type === 'setViewMode') { this.mode = message.mode; this.sendGraph(); }
       if (message.type === 'expandRange') { this.expanded.add(message.rangeId); this.sendGraph(); }
       if (message.type === 'compareRefs') this.post({ type: 'comparison', payload: await this.diff.compare(message.left, message.right, message.mode) });
       if (message.type === 'openDiff') {
-        const left = GitContentProvider.uri(message.left, message.oldPath ?? message.path, 'left');
-        const right = GitContentProvider.uri(message.right, message.path, 'right');
+        const left = GitContentProvider.uri(message.left, message.path, 'left', message.status !== 'D');
+        const rightPath = message.oldPath ?? message.path;
+        const right = GitContentProvider.uri(message.right, rightPath, 'right', message.status !== 'A');
         await vscode.commands.executeCommand('vscode.diff', left, right, `${message.path} (${message.left} ↔ ${message.right})`);
       }
       if (message.type === 'copy') await vscode.env.clipboard.writeText(message.value);
