@@ -5,6 +5,8 @@ describe('isWebviewRequest', () => {
   it('accepts complete requests', () => {
     expect(isWebviewRequest({ type: 'setViewMode', mode: 'topology' })).toBe(true);
     expect(isWebviewRequest({ type: 'showRefLog', ref: 'refs/heads/main' })).toBe(true);
+    expect(isWebviewRequest({ type: 'switchBranch', ref: 'refs/heads/topic' })).toBe(true);
+    expect(isWebviewRequest({ type: 'mergeBranch', ref: 'refs/heads/topic' })).toBe(true);
     expect(isWebviewRequest({
       type: 'openDiff', left: 'refs/heads/topic', right: 'refs/heads/main',
       path: 'new name.ts', oldPath: 'old name.ts', status: 'R'

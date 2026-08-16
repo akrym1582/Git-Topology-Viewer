@@ -12,4 +12,4 @@ export interface BranchComparison { left: string; right: string; mode: 'divergen
 export interface ChangedFile { status: string; path: string; oldPath?: string }
 export interface CommitInfo { id: string; subject: string }
 export interface RefLog { ref: string; commits: CommitInfo[] }
-export interface GraphPayload { graph: ViewGraph; refs: GitRef[]; repository: string; mode: ViewMode; expandedRangeIds: string[] }
+export interface GraphPayload { graph: ViewGraph; refs: GitRef[]; repository: string; currentBranch?: string; mode: ViewMode; expandedRangeIds: string[] }

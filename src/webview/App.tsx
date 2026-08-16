@@ -9,6 +9,7 @@ export function App() {
   const [comparison, setComparison] = useState<BranchComparison>();
   const [refLog, setRefLog] = useState<RefLog>();
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [tags, setTags] = useState(true);
   const [remotes, setRemotes] = useState(false);
   const [filter, setFilter] = useState('');
@@ -21,6 +22,7 @@ export function App() {
       if (event.data.type === 'comparison') setComparison(event.data.payload);
       if (event.data.type === 'refLog') setRefLog(event.data.payload);
       if (event.data.type === 'error') setError(event.data.message);
+      if (event.data.type === 'operationResult') setNotice(event.data.message);
     };
     addEventListener('message', receive);
     return () => removeEventListener('message', receive);
@@ -59,7 +61,7 @@ export function App() {
     event.preventDefault();
     event.stopPropagation();
     if (!selected.some(item => item.fullName === ref.fullName)) setSelected([ref]);
-    setMenu({ ref, x: event.clientX, y: event.clientY });
+    setMenu({ ref, x: Math.min(event.clientX, window.innerWidth - 220), y: Math.min(event.clientY, window.innerHeight - 210) });
   };
   const showLog = (ref: GitRef) => {
     setSelected([ref]);
@@ -68,13 +70,18 @@ export function App() {
     vscode.postMessage({ type: 'showRefLog', ref: ref.fullName });
     setMenu(undefined);
   };
+  const runBranchOperation = (type: 'switchBranch' | 'mergeBranch', ref: GitRef) => {
+    vscode.postMessage({ type, ref: ref.fullName });
+    setMenu(undefined);
+  };
 
   return <div className="app" onContextMenu={event => event.preventDefault()}>
     <header><div className="brand"><span className="mark">⌁</span><div><strong>Git Topology</strong><small>{data.repository}</small></div></div><div className="modes">{(['topology','compact','full'] as ViewMode[]).map(mode => <button key={mode} className={data.mode === mode ? 'active' : ''} onClick={() => vscode.postMessage({type:'setViewMode',mode})}>{mode[0].toUpperCase()+mode.slice(1)}</button>)}</div><button className="refresh" onClick={() => vscode.postMessage({type:'refresh'})}>↻ Refresh</button></header>
     <div className="filters"><label><input type="checkbox" checked readOnly/> Local branches</label><label><input type="checkbox" checked={tags} onChange={event=>setTags(event.target.checked)}/> Tags</label><label><input type="checkbox" checked={remotes} onChange={event=>setRemotes(event.target.checked)}/> Remote branches</label><input className="search" placeholder="Filter branches…" value={filter} onChange={event=>setFilter(event.target.value)}/><span>{data.graph.nodes.filter(node=>node.kind==='commit').length} nodes · {refs.length} refs</span></div>
     <div className="content"><Graph data={data} allowed={allowed} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/><aside><Inspector selected={selected} refs={refs} comparison={comparison} refLog={refLog} onClose={()=>setSelected([])}/></aside></div>
-    {menu && <div className="context-menu" role="menu" style={{left:menu.x,top:menu.y}} onClick={event=>event.stopPropagation()}><div className="context-title">{menu.ref.name}</div><button role="menuitem" onClick={()=>showLog(menu.ref)}>View branch log</button><button role="menuitem" onClick={()=>{selectRef(menu.ref,true);setMenu(undefined);}}>Add to comparison</button></div>}
+    {menu && <div className="context-menu" role="menu" style={{left:menu.x,top:menu.y}} onClick={event=>event.stopPropagation()}><div className="context-title">{menu.ref.name}</div><button role="menuitem" onClick={()=>showLog(menu.ref)}>View branch log</button><button role="menuitem" onClick={()=>{selectRef(menu.ref,true);setMenu(undefined);}}>Add to comparison</button>{menu.ref.type==='localBranch'&&<><div className="context-separator"/><button role="menuitem" disabled={data.currentBranch===menu.ref.name} onClick={()=>runBranchOperation('switchBranch',menu.ref)}>{data.currentBranch===menu.ref.name?'Current branch':'Switch to branch…'}</button><button role="menuitem" disabled={!data.currentBranch||data.currentBranch===menu.ref.name} onClick={()=>runBranchOperation('mergeBranch',menu.ref)}>Merge into {data.currentBranch??'current branch'}…</button></>}</div>}
     {error && <div className="toast">{error}</div>}
+    {notice && <div className="toast success" role="status" onClick={()=>setNotice('')}>{notice}</div>}
   </div>;
 }
 

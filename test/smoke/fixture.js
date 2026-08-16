@@ -59,6 +59,7 @@ setTimeout(() => {
       type: 'graph',
       payload: {
         repository: 'commerce-platform',
+        currentBranch: 'main',
         mode: 'topology',
         expandedRangeIds: [],
         refs,
