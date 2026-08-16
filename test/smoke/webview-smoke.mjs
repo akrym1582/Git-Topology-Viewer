@@ -62,6 +62,19 @@ try {
   if (remoteLabels.length !== 2 || remoteLabels[0][0] !== remoteLabels[1][0] || remoteLabels[0][1] === remoteLabels[1][1]) {
     throw new Error(`Expected two remote refs stacked vertically: ${JSON.stringify(remoteLabels)}`);
   }
+  const invalidRefConnectors = await page.evaluate(() => [...document.querySelectorAll('.node')].flatMap(node => {
+    const refs = [...node.querySelectorAll('.ref')];
+    const connectors = [...node.querySelectorAll('.ref-connectors path')];
+    if (refs.length !== connectors.length) return [{ commit: node.getAttribute('data-commit'), reason: 'count' }];
+    return refs.flatMap((ref, index) => {
+      const refPosition = (ref.getAttribute('transform') ?? '').match(/translate\(([^,]+),([^\)]+)\)/)?.slice(1).map(Number);
+      const connectorPosition = (connectors[index].getAttribute('d') ?? '').match(/M 0 0 L ([^ ]+) ([^ ]+)/)?.slice(1).map(Number);
+      return !refPosition || !connectorPosition || connectorPosition[0] !== refPosition[0] || connectorPosition[1] !== refPosition[1] + 14
+        ? [{ commit: node.getAttribute('data-commit'), ref: ref.getAttribute('aria-label') }]
+        : [];
+    });
+  }));
+  if (invalidRefConnectors.length) throw new Error(`Expected each ref label to connect directly to its commit: ${JSON.stringify(invalidRefConnectors)}`);
   const refsBelowCommitIds = await page.evaluate(() => [...document.querySelectorAll('.node')].flatMap(node => {
     const sha = node.querySelector('.sha')?.getBoundingClientRect();
     if (!sha) return [];
@@ -79,6 +92,13 @@ try {
         ? [{ rangeIndex, refIndex }] : []));
   });
   if (overlaps.length) throw new Error(`Range labels overlap ref labels: ${JSON.stringify(overlaps)}`);
+  const zoomPosition = await page.locator('.zoom-controls').evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return { left: rect.left, bottom: window.innerHeight - rect.bottom, height: rect.height };
+  });
+  if (zoomPosition.left !== 12 || zoomPosition.bottom !== 12 || zoomPosition.height !== 28) {
+    throw new Error(`Expected zoom controls at the lower left: ${JSON.stringify(zoomPosition)}`);
+  }
   const initialWidth = Number(await page.locator('.canvas svg').getAttribute('width'));
   await page.getByRole('button', { name: 'Zoom in' }).click();
   await page.getByRole('button', { name: 'Reset zoom' }).getByText('110%').waitFor();
