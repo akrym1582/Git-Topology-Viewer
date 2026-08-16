@@ -1,7 +1,7 @@
 import { ViewMode } from '../domain/models';
 
-export type GraphMenuCommand = 'compareCurrent' | 'selectCompareBase' | 'compareBase' | 'compareWith' | 'showMergeBase' | 'showChangedFiles' | 'focus' | 'related' | 'expandCommits' | 'collapseCommits' | 'checkout' | 'createBranch' | 'copyName' | 'copyHash';
-export interface GraphContextMenuItem { command: GraphMenuCommand; label: string; enabled: boolean; visible: boolean; group: 'compare' | 'graph' | 'git' | 'copy' }
+export type GraphMenuCommand = 'compareCurrent' | 'selectCompareBase' | 'compareBase' | 'compareWith' | 'showMergeBase' | 'showChangedFiles' | 'focus' | 'related' | 'expandCommits' | 'collapseCommits' | 'checkout' | 'createBranch' | 'copyName' | 'copyHash' | 'push' | 'pull' | 'fetch' | 'checkoutRemote' | 'mergeIntoCurrent' | 'rebaseCurrentOnto' | 'deleteLocal' | 'deleteRemote' | 'continueRebase' | 'abortRebase' | 'continueCherryPick' | 'abortCherryPick';
+export interface GraphContextMenuItem { command: GraphMenuCommand; label: string; enabled: boolean; visible: boolean; group: 'compare' | 'graph' | 'git' | 'manage' | 'copy' }
 
 type ComparisonMode = 'divergence' | 'snapshot';
 type ChangedFileStatus = 'A' | 'D' | 'M' | 'R' | 'C' | 'T' | 'U' | 'X' | 'B';
@@ -40,7 +40,7 @@ export function isWebviewRequest(value: unknown): value is WebviewRequest {
       return (value.nodeType === 'branch' || value.nodeType === 'remoteBranch' || value.nodeType === 'tag' || value.nodeType === 'commit')
         && isString(value.nodeId) && typeof value.x === 'number' && typeof value.y === 'number';
     case 'runContextCommand':
-      return isString(value.nodeId) && ['compareCurrent','selectCompareBase','compareBase','compareWith','showMergeBase','showChangedFiles','focus','related','expandCommits','collapseCommits','checkout','createBranch','copyName','copyHash'].includes(String(value.command));
+      return isString(value.nodeId) && ['compareCurrent','selectCompareBase','compareBase','compareWith','showMergeBase','showChangedFiles','focus','related','expandCommits','collapseCommits','checkout','createBranch','copyName','copyHash','push','pull','fetch','checkoutRemote','mergeIntoCurrent','rebaseCurrentOnto','deleteLocal','deleteRemote','continueRebase','abortRebase','continueCherryPick','abortCherryPick'].includes(String(value.command));
     case 'compareRefs':
       return isString(value.left) && isString(value.right)
         && (value.mode === 'divergence' || value.mode === 'snapshot');

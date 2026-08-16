@@ -10,6 +10,7 @@ import { TopologyBuilder } from '../domain/TopologyBuilder';
 import { BranchStatus, CommitGraph, GitRef, ViewMode } from '../domain/models';
 import { GitContentProvider } from './GitContentProvider';
 import { GraphContextMenuItem, GraphMenuCommand, isWebviewRequest, WebviewRequest } from './messages';
+import { ContextMenuPolicy } from './ContextMenuPolicy';
 
 export class TopologyPanel {
   private static current: TopologyPanel | undefined;
@@ -18,6 +19,7 @@ export class TopologyPanel {
   private refs: GitRef[] = []; private branchStatuses: BranchStatus[] = []; private graph?: CommitGraph; private currentBranch?: string;
   private readonly diff: DiffService; private readonly disposables: vscode.Disposable[] = [];
   private readonly operations: BranchOperationService;
+  private readonly menuPolicy = new ContextMenuPolicy();
   private constructor(private panel: vscode.WebviewPanel, private git: GitClient, private root: string, private workspaceState: vscode.Memento, extensionUri: vscode.Uri) {
     this.compareBase = workspaceState.get<string>('gitTopology.compareBase');
     this.diff = new DiffService(git); this.operations = new BranchOperationService(git); panel.webview.html = this.html(panel.webview, extensionUri);
@@ -97,6 +99,8 @@ export class TopologyPanel {
       item('checkout', 'Checkout', 'git', local && this.currentBranch !== ref.name), item('createBranch', 'Create Branch from Here…', 'git'),
       item('copyName', `Copy ${ref.type === 'tag' ? 'Tag' : 'Branch'} Name`, 'copy'), item('copyHash', 'Copy Commit Hash', 'copy')
     ];
+    const status = this.branchStatuses.find(candidate => candidate.ref === ref.fullName);
+    items.push(...this.menuPolicy.branchItems({ ref, currentBranch: this.currentBranch, hasUpstream: Boolean(status?.upstream), operation: { type: 'normal', hasConflicts: false } }));
     this.post({ type: 'contextMenuItems', nodeId, x, y, items });
   }
   private async runContextCommand(command: GraphMenuCommand, nodeId: string): Promise<void> {
@@ -117,6 +121,14 @@ export class TopologyPanel {
     if (command === 'collapseCommits') { this.mode = 'topology'; this.expanded.clear(); this.sendGraph(); }
     if (command === 'checkout') await this.switchBranch(ref.fullName);
     if (command === 'createBranch') await this.createBranch(ref);
+    if (command === 'push') await this.push(ref);
+    if (command === 'pull') await this.runResult(await this.operations.pull(ref.name), `Pulled ${ref.name}.`);
+    if (command === 'fetch') await this.fetch(ref);
+    if (command === 'checkoutRemote') await this.checkoutRemote(ref);
+    if (command === 'mergeIntoCurrent') await this.mergeBranch(ref.fullName);
+    if (command === 'rebaseCurrentOnto') await this.rebase(ref);
+    if (command === 'deleteLocal') await this.deleteLocal(ref);
+    if (command === 'deleteRemote') await this.deleteRemote(ref);
     if (command === 'copyName') await vscode.env.clipboard.writeText(ref.name);
     if (command === 'copyHash') await vscode.env.clipboard.writeText(ref.commitId);
   }
@@ -131,9 +143,7 @@ export class TopologyPanel {
   private async createBranch(ref: GitRef): Promise<void> {
     const name = await vscode.window.showInputBox({ title: `Create branch from ${ref.name}`, prompt: 'New branch name', validateInput: value => value.trim() ? undefined : 'Enter a branch name.' });
     if (!name) return;
-    await this.operations.createBranch(name.trim(), ref.fullName);
-    this.post({ type: 'operationResult', message: `Created and checked out ${name.trim()}.` });
-    await this.load();
+    await this.runResult(await this.operations.createBranch(name.trim(), ref.fullName), `Created and checked out ${name.trim()}.`);
   }
   private knownRef(fullName: string): GitRef {
     const ref = this.refs.find(candidate => candidate.fullName === fullName);
@@ -143,9 +153,7 @@ export class TopologyPanel {
 
   private async switchBranch(ref: string): Promise<void> {
     const branch = this.localBranchName(ref);
-    await this.operations.switchTo(branch);
-    this.post({ type: 'operationResult', message: `Switched to ${branch}.` });
-    await this.load();
+    await this.runResult(await this.operations.switchTo(branch), `Switched to ${branch}.`);
   }
   private async mergeBranch(ref: string): Promise<void> {
     const branch = this.localBranchName(ref);
@@ -154,10 +162,43 @@ export class TopologyPanel {
     if (current === branch) throw new Error(`${branch} is already the current branch.`);
     const choice = await vscode.window.showWarningMessage(`Merge ${branch} into the current branch (${current})?`, { modal: true }, 'Merge Branch');
     if (choice !== 'Merge Branch') return;
-    await this.operations.merge(branch);
-    this.post({ type: 'operationResult', message: `Merged ${branch} into ${current}.` });
-    await this.load();
+    await this.runResult(await this.operations.mergeIntoCurrent(branch), `Merged ${branch} into ${current}.`);
   }
+  private async push(ref: GitRef): Promise<void> {
+    if (ref.type !== 'localBranch') return;
+    const status = this.branchStatuses.find(value => value.ref === ref.fullName);
+    if (status?.upstream) return this.runResult(await this.operations.push(ref.name), `Pushed ${ref.name}.`);
+    const remote = await this.pickRemote(`Push ${ref.name} and set upstream`); if (!remote) return;
+    await this.runResult(await this.operations.push(ref.name, remote, true), `Pushed ${ref.name} to ${remote} and set upstream.`);
+  }
+  private async fetch(ref: GitRef): Promise<void> {
+    const remote = ref.type === 'remoteBranch' ? ref.name.split('/')[0] : await this.pickRemote(`Fetch for ${ref.name}`);
+    if (remote) await this.runResult(await this.operations.fetch(remote), `Fetched ${remote}.`);
+  }
+  private async checkoutRemote(ref: GitRef): Promise<void> {
+    if (ref.type !== 'remoteBranch') return;
+    const local = ref.name.includes('/') ? ref.name.slice(ref.name.indexOf('/') + 1) : ref.name;
+    const existing = this.refs.find(value => value.type === 'localBranch' && value.name === local);
+    if (existing) { const choice = await vscode.window.showInformationMessage(`Local branch "${local}" already exists.`, 'Checkout Existing', 'Cancel'); if (choice === 'Checkout Existing') await this.switchBranch(existing.fullName); return; }
+    await this.runResult(await this.operations.checkoutRemote(ref.name, local), `Checked out ${ref.name} as ${local}.`);
+  }
+  private async rebase(ref: GitRef): Promise<void> {
+    const current = this.currentBranch; if (!current) throw new Error('Check out a local branch before rebasing.');
+    const choice = await vscode.window.showWarningMessage(`Rebase "${current}" onto "${ref.name}"? This rewrites commit history.`, { modal: true }, 'Rebase');
+    if (choice === 'Rebase') await this.runResult(await this.operations.rebaseCurrentOnto(ref.name), `Rebased ${current} onto ${ref.name}.`);
+  }
+  private async deleteLocal(ref: GitRef): Promise<void> {
+    const choice = await vscode.window.showWarningMessage(`Delete local branch "${ref.name}"?`, { modal: true }, 'Delete'); if (choice !== 'Delete') return;
+    let result = await this.operations.deleteLocalBranch(ref.name);
+    if (!result.success && result.errorType === 'branchNotMerged') { const force = await vscode.window.showWarningMessage(`Branch has unmerged commits. Force delete "${ref.name}"? This may permanently remove commits.`, { modal: true }, 'Force Delete'); if (force === 'Force Delete') result = await this.operations.deleteLocalBranch(ref.name, true); }
+    await this.runResult(result, `Deleted ${ref.name}.`);
+  }
+  private async deleteRemote(ref: GitRef): Promise<void> {
+    const slash=ref.name.indexOf('/'); if (slash < 1) throw new Error('Cannot determine the remote branch.'); const remote=ref.name.slice(0,slash), branch=ref.name.slice(slash+1);
+    const choice=await vscode.window.showWarningMessage(`Delete remote branch?\n\n${ref.name}\n\nThis affects other users.`,{modal:true},'Delete'); if(choice==='Delete') await this.runResult(await this.operations.deleteRemoteBranch(remote,branch),`Deleted ${ref.name}.`);
+  }
+  private async pickRemote(title: string): Promise<string | undefined> { const output=await this.git.run(['remote']); const remotes=output.split('\n').filter(Boolean); return vscode.window.showQuickPick(remotes,{title}); }
+  private async runResult(result: import('../git/BranchOperationService').GitCommandResult, success: string): Promise<void> { if (!result.success) throw new Error(result.stderr?.trim() || 'Git operation failed.'); this.post({type:'operationResult',message:success}); await this.load(); }
   private localBranchName(ref: string): string {
     this.assertKnownRef(ref);
     const selected = this.refs.find(candidate => candidate.fullName === ref);

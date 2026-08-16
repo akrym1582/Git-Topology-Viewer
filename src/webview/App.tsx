@@ -108,6 +108,6 @@ function branchState(data: GraphPayload, ref: GitRef): string {
   return ` [L][R]${movement}`;
 }
 function ContextMenu({menu,onRun}:{menu:ContextMenuState;onRun:(command:GraphContextMenuItem['command'])=>void}) {
-  const groups: GraphContextMenuItem['group'][] = ['compare','graph','git','copy'];
+  const groups: GraphContextMenuItem['group'][] = ['compare','graph','git','manage','copy'];
   return <div className="context-menu" role="menu" style={{left:menu.x,top:menu.y}} onClick={event=>event.stopPropagation()}><div className="context-title">{menu.ref.name}</div>{groups.map(group => { const items=menu.items.filter(item=>item.visible&&item.group===group); return items.length?<React.Fragment key={group}><div className="context-group">{group}</div>{items.map(item=><button key={item.command} role="menuitem" disabled={!item.enabled} onClick={()=>onRun(item.command)}>{item.label}</button>)}</React.Fragment>:null; })}</div>;
 }
