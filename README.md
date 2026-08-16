@@ -34,6 +34,10 @@ The screenshot is written to `artifacts/webview-smoke.png`. The complete environ
 automated assertions, manual review checklist, and troubleshooting notes live in
 `.agents/skills/git-topology-webview-smoke-test/`.
 
+## Sample
+
+![Git Topology Viewer sample](docs/images/webview-smoke.png)
+
 ## Design
 
 The extension loads SHA/parent/ref summaries first through `git for-each-ref` and `git rev-list`. The immutable DAG is converted into a mode-specific view graph and then laid out. Comparisons and file bodies are loaded only on demand through Git CLI commands.
