@@ -33,21 +33,21 @@ jobs:
           npm run typecheck 2>&1 | tee artifacts/ci/typecheck.log
 
       - name: Run unit tests
-        id: unit-tests
+        id: unit_tests
         continue-on-error: true
         run: |
           set -o pipefail
           npm test 2>&1 | tee artifacts/ci/unit-tests.log
 
       - name: Install smoke-test browser
-        id: smoke-install
+        id: smoke_install
         continue-on-error: true
         run: |
           set -o pipefail
           npm run smoke:install 2>&1 | tee artifacts/ci/smoke-install.log
 
       - name: Run webview smoke test
-        id: smoke-test
+        id: smoke_test
         continue-on-error: true
         run: |
           set -o pipefail
@@ -65,5 +65,5 @@ jobs:
           retention-days: 14
 
       - name: Fail if a check failed
-        if: steps.typecheck.outcome == 'failure' || steps['unit-tests'].outcome == 'failure' || steps['smoke-install'].outcome == 'failure' || steps['smoke-test'].outcome == 'failure'
+        if: steps.typecheck.outcome == 'failure' || steps.unit_tests.outcome == 'failure' || steps.smoke_install.outcome == 'failure' || steps.smoke_test.outcome == 'failure'
         run: exit 1

@@ -41,8 +41,10 @@ jobs:
 
       - name: Bump version
         id: version
+        env:
+          BUMP: ${{ inputs.bump }}
         run: |
-          npm version "${{ inputs.bump }}" --no-git-tag-version
+          npm version "$BUMP" --no-git-tag-version
           echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Package extension
