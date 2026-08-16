@@ -15,13 +15,15 @@ describe('BranchOperationService', () => {
     expect(run).toHaveBeenCalledWith(['rev-parse', '--abbrev-ref', 'HEAD']);
   });
 
-  it('passes branch names as separate switch and merge arguments', async () => {
+  it('passes branch names as separate switch, create, and merge arguments', async () => {
     const run = vi.fn().mockResolvedValue('');
     const service = serviceWith(run);
     await service.switchTo('feature/topic');
+    await service.createBranch('new topic', 'refs/tags/v1');
     await service.merge('feature/topic');
     expect(run).toHaveBeenNthCalledWith(1, ['switch', '--', 'feature/topic']);
-    expect(run).toHaveBeenNthCalledWith(2, ['merge', '--no-edit', '--', 'feature/topic']);
+    expect(run).toHaveBeenNthCalledWith(2, ['switch', '-c', 'new topic', '--', 'refs/tags/v1']);
+    expect(run).toHaveBeenNthCalledWith(3, ['merge', '--no-edit', '--', 'feature/topic']);
   });
 
   it('surfaces an actionable Git failure without the raw command line', async () => {

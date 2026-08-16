@@ -1,5 +1,6 @@
 export type RefType = 'localBranch' | 'remoteBranch' | 'tag';
 export interface GitRef { name: string; fullName: string; type: RefType; commitId: string }
+export interface BranchStatus { ref: string; local: boolean; remote: boolean; upstream?: string; ahead?: number; behind?: number }
 export interface CommitNode { id: string; parents: string[]; author?: string; date?: string; message?: string; refs: GitRef[] }
 export interface CommitGraph { nodes: Map<string, CommitNode>; order: string[] }
 export interface GraphEdge { from: string; to: string; hiddenCommits: string[]; hiddenCommitCount: number }
@@ -12,4 +13,4 @@ export interface BranchComparison { left: string; right: string; mode: 'divergen
 export interface ChangedFile { status: string; path: string; oldPath?: string }
 export interface CommitInfo { id: string; subject: string }
 export interface RefLog { ref: string; commits: CommitInfo[] }
-export interface GraphPayload { graph: ViewGraph; refs: GitRef[]; repository: string; currentBranch?: string; mode: ViewMode; expandedRangeIds: string[] }
+export interface GraphPayload { graph: ViewGraph; refs: GitRef[]; branchStatuses: BranchStatus[]; repository: string; currentBranch?: string; compareBase?: string; mergeBaseIds: string[]; focusedRef?: string; mode: ViewMode; expandedRangeIds: string[] }
