@@ -52,6 +52,12 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
         run: npx --yes @vscode/vsce package --no-dependencies --out "git-topology-viewer-${VERSION}.vsix"
 
+      - name: Publish to Visual Studio Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: npx --yes @vscode/vsce publish --packagePath "git-topology-viewer-${VERSION}.vsix"
+
       - name: Commit version and tag
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -63,12 +69,6 @@ jobs:
           git tag "v${VERSION}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
           git push origin "v${VERSION}"
-
-      - name: Publish to Visual Studio Marketplace
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: npx --yes @vscode/vsce publish --packagePath "git-topology-viewer-${VERSION}.vsix"
 
       - name: Create GitHub release
         env:
