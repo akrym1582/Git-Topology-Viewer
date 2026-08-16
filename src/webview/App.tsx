@@ -119,7 +119,7 @@ function Graph({data, allowed, selected, onSelect, onContextMenu}:{data:GraphPay
         </g>;
       }
       const layout = refLayouts.get(node.id)!;
-      return <g key={node.id} data-commit={node.id} className={`node ${(data.mergeBaseIds ?? []).includes(node.id)?'merge-base':''}`} transform={`translate(${node.x},${node.y})`}>{layout.refs.length===0&&<><circle r="6"/><text className="sha" x="18" y="5">{node.id.slice(0,7)}</text></>}{layout.refs.map(({ ref, position })=><g key={ref.fullName} className={`ref ${ref.type} ${selected.has(ref.fullName)?'selected':''}`} transform={`translate(${position.x},${position.y})`} onClick={event=>{event.stopPropagation();onSelect(ref,event.ctrlKey||event.metaKey);}} onContextMenu={event=>onContextMenu(ref,event)} role="button" aria-label={`${ref.name} branch`}><rect width="150" height="28" rx="0"/><text x="9" y="19">{ref.type==='tag'?'◆ ':ref.type==='remoteBranch'?'☁ ':'⑂ '}{ref.name.length>13?ref.name.slice(0,12)+'…':ref.name}{branchState(data,ref)}</text></g>)}</g>;
+      return <g key={node.id} data-commit={node.id} className={`node ${(data.mergeBaseIds ?? []).includes(node.id)?'merge-base':''}`} transform={`translate(${node.x},${node.y})`}>{layout.refs.length > 1 && <g className="ref-connectors" aria-hidden="true">{layout.refs.slice(1).map(({ ref, position }) => <path key={ref.fullName} data-ref-connector={ref.fullName} d={`M ${layout.anchor.x} ${layout.anchor.y} V ${position.y - REF_ROW_GAP / 2} H ${position.x + REF_ICON_CENTER_X} V ${position.y + REF_HEIGHT / 2}`}/>)}</g>}{layout.refs.length===0&&<><circle r="6"/><text className="sha" x="18" y="5">{node.id.slice(0,7)}</text></>}{layout.refs.map(({ ref, position })=><g key={ref.fullName} className={`ref ${ref.type} ${selected.has(ref.fullName)?'selected':''}`} transform={`translate(${position.x},${position.y})`} onClick={event=>{event.stopPropagation();onSelect(ref,event.ctrlKey||event.metaKey);}} onContextMenu={event=>onContextMenu(ref,event)} role="button" aria-label={`${ref.name} branch`}><rect width="150" height="28" rx="0"/><text className="ref-icon" x="14" y="19" textAnchor="middle">{refIcon(ref)}</text><text className="ref-name" x="24" y="19">{displayRefName(ref.name)}{branchState(data,ref)}</text></g>)}</g>;
     })}
   </g></svg><div className="selection-hint">Click to select · Ctrl/Cmd-click two refs to compare · Right-click for comparison and graph actions</div></section>;
 }
@@ -128,6 +128,7 @@ const REF_WIDTH = 150;
 const REF_HEIGHT = 28;
 const REF_ROW_GAP = 6;
 const REF_COLUMN_GAP = 8;
+const REF_ICON_CENTER_X = 14;
 const REF_TYPES: GitRef['type'][] = ['tag', 'localBranch', 'remoteBranch'];
 
 interface RefLayout {
@@ -140,10 +141,10 @@ function layoutRefs(refs: GitRef[]): RefLayout {
   const firstRowY = -((rows.length * REF_HEIGHT) + ((rows.length - 1) * REF_ROW_GAP)) / 2;
   const positionedRefs = rows.flatMap((row, rowIndex) => row.map((ref, columnIndex) => ({
     ref,
-    position: { x: columnIndex * (REF_WIDTH + REF_COLUMN_GAP), y: firstRowY + rowIndex * (REF_HEIGHT + REF_ROW_GAP) }
+    position: { x: -REF_ICON_CENTER_X + columnIndex * (REF_WIDTH + REF_COLUMN_GAP), y: firstRowY + rowIndex * (REF_HEIGHT + REF_ROW_GAP) }
   })));
   const anchor = positionedRefs[0]
-    ? { x: positionedRefs[0].position.x, y: positionedRefs[0].position.y + REF_HEIGHT / 2 }
+    ? { x: positionedRefs[0].position.x + REF_ICON_CENTER_X, y: positionedRefs[0].position.y + REF_HEIGHT / 2 }
     : { x: 0, y: 0 };
   return { refs: positionedRefs, anchor };
 }
@@ -167,6 +168,8 @@ function branchState(data: GraphPayload, ref: GitRef): string {
   const movement = status.ahead || status.behind ? `${status.ahead ? ` ↑${status.ahead}` : ''}${status.behind ? ` ↓${status.behind}` : ''}` : ' =';
   return ` [L][R]${movement}`;
 }
+function refIcon(ref: GitRef): string { return ref.type==='tag' ? '◆' : ref.type==='remoteBranch' ? '☁' : '⑂'; }
+function displayRefName(name: string): string { return name.length > 18 ? `${name.slice(0,17)}…` : name; }
 function ContextMenu({menu,onRun}:{menu:ContextMenuState;onRun:(command:GraphContextMenuItem['command'])=>void}) {
   const groups: GraphContextMenuItem['group'][] = ['compare','graph','git','manage','copy'];
   return <div className="context-menu" role="menu" style={{left:menu.x,top:menu.y}} onClick={event=>event.stopPropagation()}><div className="context-title">{menu.ref.name}</div>{groups.map(group => { const items=menu.items.filter(item=>item.visible&&item.group===group); return items.length?<React.Fragment key={group}><div className="context-group">{group}</div>{items.map(item=><button key={item.command} role="menuitem" disabled={!item.enabled} onClick={()=>onRun(item.command)}>{item.label}</button>)}</React.Fragment>:null; })}</div>;

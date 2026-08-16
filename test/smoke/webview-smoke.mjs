@@ -62,6 +62,16 @@ try {
   if (remoteLabels.length !== 2 || remoteLabels[0][0] === remoteLabels[1][0] || remoteLabels[0][1] !== remoteLabels[1][1]) {
     throw new Error(`Expected two remote refs on one row: ${JSON.stringify(remoteLabels)}`);
   }
+  const refAlignment = await page.locator('.ref.localBranch').first().evaluate(element => {
+    const refX = Number((element.getAttribute('transform') ?? '').match(/translate\(([^,]+)/)?.[1]);
+    const iconX = Number(element.querySelector('.ref-icon')?.getAttribute('x'));
+    return refX + iconX;
+  });
+  if (refAlignment !== 0) throw new Error(`Expected the graph line to cross the ref icon center, got ${refAlignment}`);
+  const releaseRef = page.getByRole('button', { name: 'origin/release branch' });
+  if (!(await releaseRef.textContent())?.includes('origin/release')) throw new Error('Expected the origin/release label not to be truncated');
+  const releaseConnector = await page.locator('[data-ref-connector="refs/remotes/origin/release"]').getAttribute('d');
+  if (!releaseConnector?.includes('H 158 V 17')) throw new Error(`Expected origin/release to connect to its graph line: ${releaseConnector}`);
   const invalidRefNodes = await page.evaluate(() => [...document.querySelectorAll('.node')].flatMap(node => {
     const refs = [...node.querySelectorAll('.ref')];
     const circles = node.querySelectorAll('circle');
