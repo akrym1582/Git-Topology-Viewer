@@ -17,6 +17,7 @@ export function App() {
   const [filter, setFilter] = useState('');
   const [selected, setSelected] = useState<GitRef[]>([]);
   const [menu, setMenu] = useState<ContextMenuState>();
+  const [inspectorVisible, setInspectorVisible] = useState(true);
 
   useEffect(() => {
     const receive = (event: MessageEvent) => {
@@ -71,8 +72,8 @@ export function App() {
 
   return <div className="app" onContextMenu={event => event.preventDefault()}>
     <header><div className="brand"><span className="mark">⌁</span><div><strong>Git Topology</strong><small>{data.repository}</small></div></div><div className="modes">{(['topology','compact','full'] as ViewMode[]).map(mode => <button key={mode} className={data.mode === mode ? 'active' : ''} onClick={() => vscode.postMessage({type:'setViewMode',mode})}>{mode[0].toUpperCase()+mode.slice(1)}</button>)}</div><button className="refresh" onClick={() => vscode.postMessage({type:'refresh'})}>↻ Refresh</button></header>
-    <div className="filters"><label><input type="checkbox" checked readOnly/> Local branches</label><label><input type="checkbox" checked={tags} onChange={event=>setTags(event.target.checked)}/> Tags</label><label><input type="checkbox" checked={remotes} onChange={event=>setRemotes(event.target.checked)}/> Remote branches</label><input className="search" placeholder="Filter branches…" value={filter} onChange={event=>setFilter(event.target.value)}/><span>{data.graph.nodes.filter(node=>node.kind==='commit').length} nodes · {refs.length} refs</span></div>
-    <div className="content"><Graph data={data} allowed={allowed} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/><aside><Inspector selected={selected} refs={refs} comparison={comparison} refLog={refLog} onClose={()=>setSelected([])}/></aside></div>
+    <div className="filters"><label><input type="checkbox" checked={tags} onChange={event=>setTags(event.target.checked)}/> Tags</label><label><input type="checkbox" checked={remotes} onChange={event=>setRemotes(event.target.checked)}/> Remote branches</label><input className="search" placeholder="Filter branches…" value={filter} onChange={event=>setFilter(event.target.value)}/><button className="toggle-inspector" aria-pressed={inspectorVisible} onClick={()=>setInspectorVisible(value=>!value)}>{inspectorVisible?'Hide details':'Show details'}</button><span>{data.graph.nodes.filter(node=>node.kind==='commit').length} nodes · {refs.length} refs</span></div>
+    <div className={`content ${inspectorVisible?'':'inspector-hidden'}`}><Graph data={data} allowed={allowed} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/>{inspectorVisible&&<aside><Inspector selected={selected} refs={refs} comparison={comparison} refLog={refLog} onClose={()=>setSelected([])}/></aside>}</div>
     {menu && <ContextMenu menu={menu} onRun={command => { vscode.postMessage({ type: 'runContextCommand', command, nodeId: menu.ref.fullName }); setMenu(undefined); }}/>}
         {error && <div className="toast">{error}</div>}
     {notice && <div className="toast success" role="status" onClick={()=>setNotice('')}>{notice}</div>}

@@ -38,6 +38,12 @@ try {
   await page.getByText('commerce-platform').waitFor();
   await mkdir(imageDir, { recursive: true });
   await page.screenshot({ path: join(imageDir, 'smoke-main-screen.png'), fullPage: true });
+  if (await page.getByText('Local branches', { exact: true }).count()) throw new Error('Local branches should always be visible, without a filter control');
+  await page.getByRole('button', { name: 'Hide details' }).click();
+  if (await page.locator('aside').count()) throw new Error('Expected the details pane to be hidden');
+  await page.screenshot({ path: join(imageDir, 'smoke-inspector-hidden.png'), fullPage: true });
+  await page.getByRole('button', { name: 'Show details' }).click();
+  await page.locator('aside').waitFor();
 
   // Rendering: toolbar, refs, collapsed ranges, and vertical/horizontal SVG edges.
   if (await page.locator('.node').count() !== 6) throw new Error('Expected six commit nodes');
