@@ -55,7 +55,7 @@ the Git, domain, VS Code, and webview layers.
 
 ## Validate and finish
 
-Run `.agents/skills/git-topology-development/scripts/validate.sh`. Add focused tests
+Run `pwsh -NoProfile -File .agents/skills/git-topology-development/scripts/validate.ps1`. Add focused tests
 beyond the standard script when changing parsers or graph semantics. Review
 `git diff --check` and `git status`, then commit on the current branch. Summarize
 behavior and list each exact check in the final response.

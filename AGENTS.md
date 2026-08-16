@@ -37,7 +37,7 @@ from `domain` to an integration layer. Keep extension/webview messages serializa
    `src/domain`; keep presentation decisions in `src/webview`.
 3. Add or update tests for graph compression, merges, branch points, lane behavior,
    parsing, or message contracts affected by the change.
-4. Run `.agents/skills/git-topology-development/scripts/validate.sh` before commit.
+4. Run `pwsh -NoProfile -File .agents/skills/git-topology-development/scripts/validate.ps1` before commit.
 5. For a perceptible webview change, build and inspect it in VS Code or a browser
    harness and capture a screenshot. Follow
    `.agents/skills/git-topology-webview-smoke-test/SKILL.md` and run
@@ -61,6 +61,6 @@ from `domain` to an integration layer. Keep extension/webview messages serializa
 
 ## Required checks
 
-Run `.agents/skills/git-topology-development/scripts/validate.sh`. If a command
+Run `pwsh -NoProfile -File .agents/skills/git-topology-development/scripts/validate.ps1`. If a command
 cannot run because of the environment, report it as a warning rather than silently
 skipping it. A passing build alone is not a substitute for tests.
