@@ -24,7 +24,7 @@ const positions = [
   [commits.head, 70, 44, [refs[0]]],
   [commits.mainline, 70, 118, []],
   [commits.feature, 220, 192, [refs[2]]],
-  [commits.release, 70, 266, [refs[1]]],
+  [commits.release, 70, 266, [refs[1], refs[4]]],
   [commits.develop, 220, 340, [refs[3]]],
   [commits.root, 70, 414, []]
 ];
