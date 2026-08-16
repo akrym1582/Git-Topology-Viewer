@@ -4,6 +4,10 @@
   "description": "Understand branches, tags, divergence and merges without wading through every commit.",
   "version": "0.2.0",
   "publisher": "git-topology",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/akrym1582/Git-Topology-Viewer.git"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
