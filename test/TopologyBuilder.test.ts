@@ -48,4 +48,21 @@ describe('TopologyBuilder',()=>{
     expect(commits.map(node => node.lane)).toEqual([0, 0, 0, 0]);
     expect(ranges.map(node => node.lane)).toEqual([0, 0]);
   });
+  it('reuses side lanes after consecutive merges converge',()=>{
+    const nodes = new Map();
+    nodes.set('merge-2',{id:'merge-2',parents:['main-2','side-2'],refs:[{name:'main',fullName:'refs/heads/main',type:'localBranch',commitId:'merge-2'}]});
+    nodes.set('main-2',{id:'main-2',parents:['merge-1'],refs:[]});
+    nodes.set('side-2',{id:'side-2',parents:['merge-1'],refs:[]});
+    nodes.set('merge-1',{id:'merge-1',parents:['main-1','side-1'],refs:[]});
+    nodes.set('main-1',{id:'main-1',parents:['base'],refs:[]});
+    nodes.set('side-1',{id:'side-1',parents:['base'],refs:[]});
+    nodes.set('base',{id:'base',parents:[],refs:[]});
+    const graph = {nodes,order:['merge-2','main-2','side-2','merge-1','main-1','side-1','base']};
+
+    const topology = new TopologyBuilder().build(graph,'topology');
+    const full = new TopologyBuilder().build(graph,'full');
+
+    expect(topology.nodes.filter(node=>node.kind==='range').map(node=>node.lane)).toEqual([0,1,0,1]);
+    expect(Math.max(...full.nodes.filter(node=>node.kind==='commit').map(node=>node.lane))).toBe(1);
+  });
 });

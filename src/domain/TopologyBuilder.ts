@@ -20,15 +20,25 @@ export class TopologyBuilder {
       }
     }
     const ordered = graph.order.filter(id => visible.has(id));
-    const lanes = this.assignLanes(graph, ordered, visible); const pathLanes = this.assignLanes(graph, graph.order, new Set(graph.order)); const nodes: ViewNode[] = ordered.map((id, row) => ({ id, kind: 'commit', commit: graph.nodes.get(id), lane: lanes.get(id)!, row, x: 70 + lanes.get(id)! * 150, y: 44 + row * 74 }));
+    const lanes = this.assignLanes(graph, ordered, visible);
+    const nodes: ViewNode[] = ordered.map((id, row) => ({ id, kind: 'commit', commit: graph.nodes.get(id), lane: lanes.get(id)!, row, x: 70 + lanes.get(id)! * 150, y: 44 + row * 74 }));
+    const usedRangeLanes = new Map<string, Set<number>>();
     for (const range of ranges) {
       const fromIndex = ordered.indexOf(range.fromCommit); const toIndex = ordered.indexOf(range.toCommit);
       if (fromIndex < 0 || toIndex < 0) continue;
       const row = (fromIndex + toIndex) / 2;
-      const firstParent = graph.nodes.get(range.fromCommit)?.parents[0];
-      const lane = firstParent === range.commits[0]
-        ? lanes.get(range.fromCommit) ?? 0
-        : pathLanes.get(range.commits[0]) ?? lanes.get(range.fromCommit) ?? 0;
+      const parents = graph.nodes.get(range.fromCommit)?.parents ?? [];
+      const parentIndex = parents.indexOf(range.commits[0]);
+      const fromLane = lanes.get(range.fromCommit) ?? 0;
+      const toLane = lanes.get(range.toCommit) ?? fromLane;
+      const used = usedRangeLanes.get(range.fromCommit) ?? new Set([fromLane]);
+      let lane = parentIndex <= 0 ? fromLane : toLane;
+      if (parentIndex > 0 && used.has(lane)) {
+        lane = fromLane + 1;
+        while (used.has(lane)) lane++;
+      }
+      used.add(lane);
+      usedRangeLanes.set(range.fromCommit, used);
       nodes.push({ id: range.id, kind: 'range', range, lane, row, x: 70 + lane * 150, y: 44 + row * 74 });
     }
     const visibleOrdered = [...nodes].filter(n => n.kind === 'commit').sort((a,b) => a.row-b.row);
@@ -45,6 +55,9 @@ export class TopologyBuilder {
     for (const id of order) {
       let lane = active.indexOf(id); if (lane < 0) { lane = active.findIndex(x => !x); if (lane < 0) lane = active.length; }
       result.set(id, lane);
+      for (let i = 0; i < active.length; i++) {
+        if (i !== lane && active[i] === id) active[i] = '';
+      }
       const parents = (graph.nodes.get(id)?.parents ?? [])
         .map(parent => this.nextVisibleAncestor(graph, parent, visible))
         .filter((parent): parent is string => parent !== undefined);
