@@ -16,7 +16,8 @@
     "Visualization"
   ],
   "activationEvents": [
-    "onCommand:gitTopology.open"
+    "onCommand:gitTopology.open",
+    "onView:gitTopology.launcher"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -24,9 +25,42 @@
       {
         "command": "gitTopology.open",
         "title": "Git Topology: Open Viewer",
-        "category": "Git Topology"
+        "category": "Git Topology",
+        "icon": "$(graph)"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "gitTopology",
+          "title": "Git Topology",
+          "icon": "resources/topology.svg"
+        }
+      ]
+    },
+    "views": {
+      "gitTopology": [
+        {
+          "id": "gitTopology.launcher",
+          "name": "Git Topology Viewer"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "gitTopology.launcher",
+        "contents": "Visualize the commit graph for the current repository.\n[Open Git Topology Viewer](command:gitTopology.open)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "gitTopology.open",
+          "when": "view == gitTopology.launcher",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "Git Topology",
       "properties": {
