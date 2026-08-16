@@ -32,4 +32,20 @@ describe('TopologyBuilder',()=>{
     ]);
     expect(new Set(ranges.map(node => node.lane)).size).toBe(2);
   });
+  it('does not drift right after consecutive collapsed histories',()=>{
+    const nodes = new Map();
+    nodes.set('a',{id:'a',parents:['a-hidden'],refs:[{name:'a',fullName:'refs/heads/a',type:'localBranch',commitId:'a'}]});
+    nodes.set('a-hidden',{id:'a-hidden',parents:['a-root'],refs:[]});
+    nodes.set('a-root',{id:'a-root',parents:[],refs:[]});
+    nodes.set('b',{id:'b',parents:['b-hidden'],refs:[{name:'b',fullName:'refs/heads/b',type:'localBranch',commitId:'b'}]});
+    nodes.set('b-hidden',{id:'b-hidden',parents:['b-root'],refs:[]});
+    nodes.set('b-root',{id:'b-root',parents:[],refs:[]});
+
+    const view = new TopologyBuilder().build({nodes,order:['a','a-hidden','a-root','b','b-hidden','b-root']},'topology');
+    const commits = view.nodes.filter(node => node.kind === 'commit');
+    const ranges = view.nodes.filter(node => node.kind === 'range');
+
+    expect(commits.map(node => node.lane)).toEqual([0, 0, 0, 0]);
+    expect(ranges.map(node => node.lane)).toEqual([0, 0]);
+  });
 });
