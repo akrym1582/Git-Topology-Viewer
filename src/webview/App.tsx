@@ -14,6 +14,7 @@ export function App() {
   const [notice, setNotice] = useState('');
   const [tags, setTags] = useState(true);
   const [remotes, setRemotes] = useState(false);
+  const [commitIds, setCommitIds] = useState(false);
   const [filter, setFilter] = useState('');
   const [selected, setSelected] = useState<GitRef[]>([]);
   const [menu, setMenu] = useState<ContextMenuState>();
@@ -71,23 +72,27 @@ export function App() {
 
   return <div className="app" onContextMenu={event => event.preventDefault()}>
     <header><div className="brand"><span className="mark">⌁</span><div><strong>Git Topology</strong><small>{data.repository}</small></div></div><div className="modes">{(['topology','compact','full'] as ViewMode[]).map(mode => <button key={mode} className={data.mode === mode ? 'active' : ''} onClick={() => vscode.postMessage({type:'setViewMode',mode})}>{mode[0].toUpperCase()+mode.slice(1)}</button>)}</div><button className="refresh" onClick={() => vscode.postMessage({type:'refresh'})}>↻ Refresh</button></header>
-    <div className="filters"><label><input type="checkbox" checked readOnly/> Local branches</label><label><input type="checkbox" checked={tags} onChange={event=>setTags(event.target.checked)}/> Tags</label><label><input type="checkbox" checked={remotes} onChange={event=>setRemotes(event.target.checked)}/> Remote branches</label><input className="search" placeholder="Filter branches…" value={filter} onChange={event=>setFilter(event.target.value)}/><span>{data.graph.nodes.filter(node=>node.kind==='commit').length} nodes · {refs.length} refs</span></div>
-    <div className="content"><Graph data={data} allowed={allowed} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/><aside><Inspector selected={selected} refs={refs} comparison={comparison} refLog={refLog} onClose={()=>setSelected([])}/></aside></div>
+    <div className="filters"><label><input type="checkbox" checked readOnly/> Local branches</label><label><input type="checkbox" checked={tags} onChange={event=>setTags(event.target.checked)}/> Tags</label><label><input type="checkbox" checked={remotes} onChange={event=>setRemotes(event.target.checked)}/> Remote branches</label><label title="Show the latest commit ID below each branch name; expanded ranges show every commit ID"><input type="checkbox" checked={commitIds} onChange={event=>setCommitIds(event.target.checked)}/> Commit IDs</label><input className="search" placeholder="Filter branches…" value={filter} onChange={event=>setFilter(event.target.value)}/><span>{data.graph.nodes.filter(node=>node.kind==='commit').length} nodes · {refs.length} refs</span></div>
+    <div className="content"><Graph data={data} allowed={allowed} showCommitIds={commitIds} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/><aside><Inspector selected={selected} refs={refs} comparison={comparison} refLog={refLog} onClose={()=>setSelected([])}/></aside></div>
     {menu && <ContextMenu menu={menu} onRun={command => { vscode.postMessage({ type: 'runContextCommand', command, nodeId: menu.ref.fullName }); setMenu(undefined); }}/>}
         {error && <div className="toast">{error}</div>}
     {notice && <div className="toast success" role="status" onClick={()=>setNotice('')}>{notice}</div>}
   </div>;
 }
 
-function Graph({data, allowed, selected, onSelect, onContextMenu}:{data:GraphPayload;allowed:Set<string>;selected:Set<string>;onSelect:(ref:GitRef,additive:boolean)=>void;onContextMenu:(ref:GitRef,event:MouseEvent)=>void}) {
+function Graph({data, allowed, showCommitIds, selected, onSelect, onContextMenu}:{data:GraphPayload;allowed:Set<string>;showCommitIds:boolean;selected:Set<string>;onSelect:(ref:GitRef,additive:boolean)=>void;onContextMenu:(ref:GitRef,event:MouseEvent)=>void}) {
   const [zoom, setZoom] = useState(1);
+  const refHeight = showCommitIds ? 42 : 28;
+  const expandedCommitIds = new Set(data.graph.nodes.flatMap(node =>
+    node.kind === 'range' && node.range?.expanded ? node.range.commits : []
+  ));
   const commits = new Map(data.graph.nodes.filter(node=>node.commit).map(node=>[node.id,node]));
   const refRects = data.graph.nodes.flatMap(node => {
     if (node.kind !== 'commit') return [];
     const visibleRefs = node.commit!.refs.filter(ref => allowed.has(ref.fullName));
     return visibleRefs.map((_, index) => {
-      const position = refPosition(visibleRefs, index);
-      return { x: node.x + position.x, y: node.y + position.y, width: 150, height: 28 };
+      const position = refPosition(visibleRefs, index, refHeight);
+      return { x: node.x + position.x, y: node.y + position.y, width: 150, height: refHeight };
     });
   }).sort((left, right) => left.x - right.x);
   const rangePositions = new Map(data.graph.nodes.filter(node => node.kind === 'range').map(node => {
@@ -116,21 +121,22 @@ function Graph({data, allowed, selected, onSelect, onContextMenu}:{data:GraphPay
         </g>;
       }
       const visibleRefs = node.commit!.refs.filter(ref=>allowed.has(ref.fullName));
-      return <g key={node.id} data-commit={node.id} className={`node ${(data.mergeBaseIds ?? []).includes(node.id)?'merge-base':''}`} transform={`translate(${node.x},${node.y})`}><circle r={node.commit!.refs.length?8:6}/><text className="sha" x="18" y="5">{node.id.slice(0,7)}</text>{visibleRefs.map((ref,index)=>{const position=refPosition(visibleRefs,index);return <g key={ref.fullName} className={`ref ${ref.type} ${selected.has(ref.fullName)?'selected':''}`} transform={`translate(${position.x},${position.y})`} onClick={event=>{event.stopPropagation();onSelect(ref,event.ctrlKey||event.metaKey);}} onContextMenu={event=>onContextMenu(ref,event)} role="button" aria-label={`${ref.name} branch`}><rect width="150" height="28" rx="5"/><text x="9" y="19">{ref.type==='tag'?'◆ ':ref.type==='remoteBranch'?'☁ ':'⑂ '}{ref.name.length>13?ref.name.slice(0,12)+'…':ref.name}{branchState(data,ref)}</text></g>;})}</g>;
+      const showStandaloneId = showCommitIds && visibleRefs.length === 0 && (expandedCommitIds.has(node.id) || data.mode === 'full');
+      return <g key={node.id} data-commit={node.id} className={`node ${(data.mergeBaseIds ?? []).includes(node.id)?'merge-base':''}`} transform={`translate(${node.x},${node.y})`}><circle r={node.commit!.refs.length?8:6}/>{showStandaloneId&&<text className="sha" x="18" y="5">{node.id.slice(0,7)}</text>}{visibleRefs.map((ref,index)=>{const position=refPosition(visibleRefs,index,refHeight);return <g key={ref.fullName} className={`ref ${ref.type} ${selected.has(ref.fullName)?'selected':''}`} transform={`translate(${position.x},${position.y})`} onClick={event=>{event.stopPropagation();onSelect(ref,event.ctrlKey||event.metaKey);}} onContextMenu={event=>onContextMenu(ref,event)} role="button" aria-label={`${ref.name} branch`}><rect width="150" height={refHeight} rx="5"/><text className="ref-name" x="9" y={showCommitIds?17:19}>{ref.type==='tag'?'◆ ':ref.type==='remoteBranch'?'☁ ':'⑂ '}{ref.name.length>13?ref.name.slice(0,12)+'…':ref.name}{branchState(data,ref)}</text>{showCommitIds&&<text className="ref-sha" x="9" y="33">{ref.commitId.slice(0,7)}</text>}</g>;})}</g>;
     })}
   </g></svg><div className="selection-hint">Click to select · Ctrl/Cmd-click two refs to compare · Right-click for comparison and graph actions</div></section>;
 }
 
-function refPosition(refs: GitRef[], index: number): { x: number; y: number } {
+function refPosition(refs: GitRef[], index: number, height: number): { x: number; y: number } {
   const ref = refs[index];
   const remoteRefs = refs.filter(candidate => candidate.type === 'remoteBranch');
   if (ref.type === 'remoteBranch') {
     const remoteIndex = remoteRefs.findIndex(candidate => candidate.fullName === ref.fullName);
-    return { x: 18 + Math.floor(remoteIndex / 2) * 158, y: -68 + (remoteIndex % 2) * 34 };
+    return { x: 18 + Math.floor(remoteIndex / 2) * 158, y: -(height * 2 + 12) + (remoteIndex % 2) * (height + 6) };
   }
   const regularIndex = refs.slice(0, index).filter(candidate => candidate.type !== 'remoteBranch').length;
   const remoteColumns = Math.ceil(remoteRefs.length / 2);
-  return { x: 18 + (remoteColumns + regularIndex) * 158, y: -34 };
+  return { x: 18 + (remoteColumns + regularIndex) * 158, y: -(height + 6) };
 }
 
 function Inspector({selected,refs,comparison,refLog,onClose}:{selected:GitRef[];refs:GitRef[];comparison?:BranchComparison;refLog?:RefLog;onClose:()=>void}) {
