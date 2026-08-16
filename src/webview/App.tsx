@@ -82,11 +82,14 @@ export function App() {
 function Graph({data, allowed, selected, onSelect, onContextMenu}:{data:GraphPayload;allowed:Set<string>;selected:Set<string>;onSelect:(ref:GitRef,additive:boolean)=>void;onContextMenu:(ref:GitRef,event:MouseEvent)=>void}) {
   const [zoom, setZoom] = useState(1);
   const commits = new Map(data.graph.nodes.filter(node=>node.commit).map(node=>[node.id,node]));
+  const refLayouts = new Map(data.graph.nodes.filter(node => node.kind === 'commit').map(node => [
+    node.id,
+    layoutRefs(node.commit!.refs.filter(ref => allowed.has(ref.fullName)))
+  ]));
   const refRects = data.graph.nodes.flatMap(node => {
     if (node.kind !== 'commit') return [];
-    const visibleRefs = node.commit!.refs.filter(ref => allowed.has(ref.fullName));
-    return visibleRefs.map((_, index) => {
-      const position = refPosition(visibleRefs, index);
+    const layout = refLayouts.get(node.id)!;
+    return layout.refs.map(({ position }) => {
       return { x: node.x + position.x, y: node.y + position.y, width: 150, height: 28 };
     });
   }).sort((left, right) => left.x - right.x);
@@ -105,7 +108,7 @@ function Graph({data, allowed, selected, onSelect, onContextMenu}:{data:GraphPay
   return <section className="canvas" onWheel={event=>{if(event.ctrlKey||event.metaKey){event.preventDefault();updateZoom(zoom+(event.deltaY<0?0.1:-0.1));}}}>
     <div className="zoom-controls" aria-label="Graph zoom controls"><button aria-label="Zoom out" title="Zoom out" disabled={zoom<=0.5} onClick={()=>updateZoom(zoom-0.1)}>−</button><button aria-label="Reset zoom" title="Reset zoom" onClick={()=>setZoom(1)}>{Math.round(zoom*100)}%</button><button aria-label="Zoom in" title="Zoom in" disabled={zoom>=2} onClick={()=>updateZoom(zoom+0.1)}>＋</button></div>
     <svg width={maxX*zoom} height={maxY*zoom}><g transform={`scale(${zoom})`}>
-    <g className="edges">{data.graph.edges.map((edge,index)=>{const from=commits.get(edge.from),to=commits.get(edge.to);if(!from||!to)return null;return <path key={`${edge.from}:${edge.to}:${index}`} d={`M ${from.x} ${from.y} C ${from.x} ${(from.y+to.y)/2}, ${to.x} ${(from.y+to.y)/2}, ${to.x} ${to.y}`} />})}</g>
+    <g className="edges">{data.graph.edges.map((edge,index)=>{const from=commits.get(edge.from),to=commits.get(edge.to);if(!from||!to)return null;const fromAnchor=refLayouts.get(from.id)!.anchor,toAnchor=refLayouts.get(to.id)!.anchor;const fromX=from.x+fromAnchor.x,fromY=from.y+fromAnchor.y,toX=to.x+toAnchor.x,toY=to.y+toAnchor.y;return <path key={`${edge.from}:${edge.to}:${index}`} d={`M ${fromX} ${fromY} C ${fromX} ${(fromY+toY)/2}, ${toX} ${(fromY+toY)/2}, ${toX} ${toY}`} />})}</g>
     {data.graph.nodes.map(node=>{
       if (node.kind === 'range') {
         const expanded = node.range!.expanded;
@@ -115,22 +118,34 @@ function Graph({data, allowed, selected, onSelect, onContextMenu}:{data:GraphPay
           <title>{expanded?'Collapse commits':'Expand commits'}</title><rect x="-8" y="-17" width="118" height="34" rx="17"/><text x="10" y="5">{expanded?'−':'+'}{node.range!.count} commits</text>
         </g>;
       }
-      const visibleRefs = node.commit!.refs.filter(ref=>allowed.has(ref.fullName));
-      return <g key={node.id} data-commit={node.id} className={`node ${(data.mergeBaseIds ?? []).includes(node.id)?'merge-base':''}`} transform={`translate(${node.x},${node.y})`}><g className="ref-connectors" aria-hidden="true">{visibleRefs.map((ref,index)=>{const position=refPosition(visibleRefs,index);return <path key={ref.fullName} d={`M 0 0 L ${position.x} ${position.y + 14}`}/>;})}</g><circle r={node.commit!.refs.length?8:6}/><text className="sha" x="18" y="5">{node.id.slice(0,7)}</text>{visibleRefs.map((ref,index)=>{const position=refPosition(visibleRefs,index);return <g key={ref.fullName} className={`ref ${ref.type} ${selected.has(ref.fullName)?'selected':''}`} transform={`translate(${position.x},${position.y})`} onClick={event=>{event.stopPropagation();onSelect(ref,event.ctrlKey||event.metaKey);}} onContextMenu={event=>onContextMenu(ref,event)} role="button" aria-label={`${ref.name} branch`}><rect width="150" height="28" rx="5"/><text x="9" y="19">{ref.type==='tag'?'◆ ':ref.type==='remoteBranch'?'☁ ':'⑂ '}{ref.name.length>13?ref.name.slice(0,12)+'…':ref.name}{branchState(data,ref)}</text></g>;})}</g>;
+      const layout = refLayouts.get(node.id)!;
+      return <g key={node.id} data-commit={node.id} className={`node ${(data.mergeBaseIds ?? []).includes(node.id)?'merge-base':''}`} transform={`translate(${node.x},${node.y})`}>{layout.refs.length===0&&<><circle r="6"/><text className="sha" x="18" y="5">{node.id.slice(0,7)}</text></>}{layout.refs.map(({ ref, position })=><g key={ref.fullName} className={`ref ${ref.type} ${selected.has(ref.fullName)?'selected':''}`} transform={`translate(${position.x},${position.y})`} onClick={event=>{event.stopPropagation();onSelect(ref,event.ctrlKey||event.metaKey);}} onContextMenu={event=>onContextMenu(ref,event)} role="button" aria-label={`${ref.name} branch`}><rect width="150" height="28" rx="0"/><text x="9" y="19">{ref.type==='tag'?'◆ ':ref.type==='remoteBranch'?'☁ ':'⑂ '}{ref.name.length>13?ref.name.slice(0,12)+'…':ref.name}{branchState(data,ref)}</text></g>)}</g>;
     })}
   </g></svg><div className="selection-hint">Click to select · Ctrl/Cmd-click two refs to compare · Right-click for comparison and graph actions</div></section>;
 }
 
-function refPosition(refs: GitRef[], index: number): { x: number; y: number } {
-  const ref = refs[index];
-  const remoteRefs = refs.filter(candidate => candidate.type === 'remoteBranch');
-  if (ref.type === 'remoteBranch') {
-    const remoteIndex = remoteRefs.findIndex(candidate => candidate.fullName === ref.fullName);
-    return { x: 18 + Math.floor(remoteIndex / 2) * 158, y: -68 + (remoteIndex % 2) * 34 };
-  }
-  const regularIndex = refs.slice(0, index).filter(candidate => candidate.type !== 'remoteBranch').length;
-  const remoteColumns = Math.ceil(remoteRefs.length / 2);
-  return { x: 18 + (remoteColumns + regularIndex) * 158, y: -34 };
+const REF_WIDTH = 150;
+const REF_HEIGHT = 28;
+const REF_ROW_GAP = 6;
+const REF_COLUMN_GAP = 8;
+const REF_TYPES: GitRef['type'][] = ['tag', 'localBranch', 'remoteBranch'];
+
+interface RefLayout {
+  refs: Array<{ ref: GitRef; position: { x: number; y: number } }>;
+  anchor: { x: number; y: number };
+}
+
+function layoutRefs(refs: GitRef[]): RefLayout {
+  const rows = REF_TYPES.map(type => refs.filter(ref => ref.type === type)).filter(row => row.length > 0);
+  const firstRowY = -((rows.length * REF_HEIGHT) + ((rows.length - 1) * REF_ROW_GAP)) / 2;
+  const positionedRefs = rows.flatMap((row, rowIndex) => row.map((ref, columnIndex) => ({
+    ref,
+    position: { x: columnIndex * (REF_WIDTH + REF_COLUMN_GAP), y: firstRowY + rowIndex * (REF_HEIGHT + REF_ROW_GAP) }
+  })));
+  const anchor = positionedRefs[0]
+    ? { x: positionedRefs[0].position.x, y: positionedRefs[0].position.y + REF_HEIGHT / 2 }
+    : { x: 0, y: 0 };
+  return { refs: positionedRefs, anchor };
 }
 
 function Inspector({selected,refs,comparison,refLog,onClose}:{selected:GitRef[];refs:GitRef[];comparison?:BranchComparison;refLog?:RefLog;onClose:()=>void}) {

@@ -2,7 +2,8 @@
   position: fixed;
   z-index: 5;
   bottom: 12px;
-  left: 12px;
+  right: 12px;
+  left: auto;
   width: max-content;
   height: 28px;
   display: flex;

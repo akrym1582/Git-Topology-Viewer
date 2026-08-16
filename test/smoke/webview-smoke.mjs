@@ -59,31 +59,33 @@ try {
     const transform = element.getAttribute('transform') ?? '';
     return transform.match(/translate\(([^,]+),([^\)]+)\)/)?.slice(1) ?? [];
   }));
-  if (remoteLabels.length !== 2 || remoteLabels[0][0] !== remoteLabels[1][0] || remoteLabels[0][1] === remoteLabels[1][1]) {
-    throw new Error(`Expected two remote refs stacked vertically: ${JSON.stringify(remoteLabels)}`);
+  if (remoteLabels.length !== 2 || remoteLabels[0][0] === remoteLabels[1][0] || remoteLabels[0][1] !== remoteLabels[1][1]) {
+    throw new Error(`Expected two remote refs on one row: ${JSON.stringify(remoteLabels)}`);
   }
-  const invalidRefConnectors = await page.evaluate(() => [...document.querySelectorAll('.node')].flatMap(node => {
+  const invalidRefNodes = await page.evaluate(() => [...document.querySelectorAll('.node')].flatMap(node => {
     const refs = [...node.querySelectorAll('.ref')];
-    const connectors = [...node.querySelectorAll('.ref-connectors path')];
-    if (refs.length !== connectors.length) return [{ commit: node.getAttribute('data-commit'), reason: 'count' }];
-    return refs.flatMap((ref, index) => {
-      const refPosition = (ref.getAttribute('transform') ?? '').match(/translate\(([^,]+),([^\)]+)\)/)?.slice(1).map(Number);
-      const connectorPosition = (connectors[index].getAttribute('d') ?? '').match(/M 0 0 L ([^ ]+) ([^ ]+)/)?.slice(1).map(Number);
-      return !refPosition || !connectorPosition || connectorPosition[0] !== refPosition[0] || connectorPosition[1] !== refPosition[1] + 14
-        ? [{ commit: node.getAttribute('data-commit'), ref: ref.getAttribute('aria-label') }]
-        : [];
-    });
+    const circles = node.querySelectorAll('circle');
+    if ((refs.length > 0 && circles.length > 0) || (refs.length === 0 && circles.length !== 1)) {
+      return [{ commit: node.getAttribute('data-commit'), reason: 'node-shape' }];
+    }
+    const rows = new Map();
+    for (const ref of refs) {
+      const position = (ref.getAttribute('transform') ?? '').match(/translate\(([^,]+),([^\)]+)\)/)?.slice(1).map(Number);
+      const type = [...ref.classList].find(value => ['tag', 'localBranch', 'remoteBranch'].includes(value));
+      if (!position || !type) return [{ commit: node.getAttribute('data-commit'), reason: 'position' }];
+      const row = rows.get(type) ?? [];
+      row.push(position);
+      rows.set(type, row);
+    }
+    if (rows.size > 3 || [...rows.values()].some(row => row.some(position => position[1] !== row[0][1]))) {
+      return [{ commit: node.getAttribute('data-commit'), reason: 'rows' }];
+    }
+    const orderedRows = ['tag', 'localBranch', 'remoteBranch'].flatMap(type => rows.has(type) ? [rows.get(type)[0][1]] : []);
+    return orderedRows.some((position, index) => index > 0 && position <= orderedRows[index - 1])
+      ? [{ commit: node.getAttribute('data-commit'), reason: 'row-order' }]
+      : [];
   }));
-  if (invalidRefConnectors.length) throw new Error(`Expected each ref label to connect directly to its commit: ${JSON.stringify(invalidRefConnectors)}`);
-  const refsBelowCommitIds = await page.evaluate(() => [...document.querySelectorAll('.node')].flatMap(node => {
-    const sha = node.querySelector('.sha')?.getBoundingClientRect();
-    if (!sha) return [];
-    return [...node.querySelectorAll('.ref')]
-      .map(ref => ref.getBoundingClientRect())
-      .filter(ref => ref.bottom > sha.top)
-      .map(() => node.getAttribute('data-commit'));
-  }));
-  if (refsBelowCommitIds.length) throw new Error(`Expected refs above commit IDs: ${JSON.stringify(refsBelowCommitIds)}`);
+  if (invalidRefNodes.length) throw new Error(`Expected ref nodes to use up to three ordered label rows without circles: ${JSON.stringify(invalidRefNodes)}`);
   const overlaps = await page.evaluate(() => {
     const refs = [...document.querySelectorAll('.ref')].map(element => element.getBoundingClientRect());
     const ranges = [...document.querySelectorAll('.range')].map(element => element.getBoundingClientRect());
@@ -94,10 +96,10 @@ try {
   if (overlaps.length) throw new Error(`Range labels overlap ref labels: ${JSON.stringify(overlaps)}`);
   const zoomPosition = await page.locator('.zoom-controls').evaluate(element => {
     const rect = element.getBoundingClientRect();
-    return { left: rect.left, bottom: window.innerHeight - rect.bottom, height: rect.height };
+    return { right: window.innerWidth - rect.right, bottom: window.innerHeight - rect.bottom, height: rect.height };
   });
-  if (zoomPosition.left !== 12 || zoomPosition.bottom !== 12 || zoomPosition.height !== 28) {
-    throw new Error(`Expected zoom controls at the lower left: ${JSON.stringify(zoomPosition)}`);
+  if (zoomPosition.right !== 12 || zoomPosition.bottom !== 12 || zoomPosition.height !== 28) {
+    throw new Error(`Expected zoom controls at the lower right: ${JSON.stringify(zoomPosition)}`);
   }
   const initialWidth = Number(await page.locator('.canvas svg').getAttribute('width'));
   await page.getByRole('button', { name: 'Zoom in' }).click();
