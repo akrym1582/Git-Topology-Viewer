@@ -11,6 +11,12 @@ A VS Code extension for reading a repository's **commit DAG** at the level you n
 - Read-only branch file contents opened in VS Code's standard diff editor—no checkout required.
 - Git CLI discovery from VS Code's Git extension, `gitTopology.gitPath`, then `PATH`.
 
+## Open the viewer
+
+Open a folder containing a Git repository, select the **Git Topology** graph icon in
+the Activity Bar on the left, and choose **Open Git Topology Viewer**. You can also
+run **Git Topology: Open Viewer** from the Command Palette.
+
 ## Run locally
 
 ```sh
@@ -18,7 +24,8 @@ npm install
 npm run build
 ```
 
-Open this folder in VS Code, press **F5**, open a Git repository in the Extension Development Host, then run **Git Topology: Open Viewer** from the Command Palette.
+Open this folder in VS Code, press **F5**, open a Git repository in the Extension
+Development Host, then use the **Git Topology** icon in the Activity Bar.
 
 ### Webview smoke test
 

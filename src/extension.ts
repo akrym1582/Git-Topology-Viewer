@@ -6,6 +6,17 @@ import { GitContentProvider } from './vscode/GitContentProvider';
 import { TopologyPanel } from './vscode/TopologyPanel';
 
 export function activate(context: vscode.ExtensionContext) {
+  const launcher = new class implements vscode.TreeDataProvider<never> {
+    getTreeItem(element: never): vscode.TreeItem {
+      return element;
+    }
+
+    getChildren(): never[] {
+      return [];
+    }
+  }();
+
+  context.subscriptions.push(vscode.window.registerTreeDataProvider('gitTopology.launcher', launcher));
   context.subscriptions.push(vscode.commands.registerCommand('gitTopology.open', async () => {
     const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!root) return void vscode.window.showWarningMessage('Open a folder containing a Git repository first.');
