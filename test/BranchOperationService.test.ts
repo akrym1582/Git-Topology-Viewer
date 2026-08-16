@@ -23,13 +23,11 @@ describe('BranchOperationService', () => {
     await service.merge('feature/topic');
     expect(run).toHaveBeenNthCalledWith(1, ['switch', '--', 'feature/topic']);
     expect(run).toHaveBeenNthCalledWith(2, ['switch', '-c', 'new topic', '--', 'refs/tags/v1']);
-    expect(run).toHaveBeenNthCalledWith(3, ['merge', '--no-edit', '--', 'feature/topic']);
+    expect(run).toHaveBeenCalledWith(['merge', '--no-edit', '--', 'feature/topic']);
   });
 
-  it('surfaces an actionable Git failure without the raw command line', async () => {
+  it('normalizes a Git failure without throwing a CLI exception into the UI', async () => {
     const run = vi.fn().mockRejectedValue(new GitError('raw command failed', 'error: local changes would be overwritten\n'));
-    await expect(serviceWith(run).switchTo('topic')).rejects.toThrow(
-      'Could not switch to topic: error: local changes would be overwritten'
-    );
+    await expect(serviceWith(run).switchTo('topic')).resolves.toMatchObject({ success: false, errorType: 'dirtyWorkingTree' });
   });
 });
