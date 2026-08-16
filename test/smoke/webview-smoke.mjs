@@ -62,6 +62,21 @@ try {
   if (remoteLabels.length !== 2 || remoteLabels[0][0] !== remoteLabels[1][0] || remoteLabels[0][1] === remoteLabels[1][1]) {
     throw new Error(`Expected two remote refs stacked vertically: ${JSON.stringify(remoteLabels)}`);
   }
+  const overlaps = await page.evaluate(() => {
+    const refs = [...document.querySelectorAll('.ref')].map(element => element.getBoundingClientRect());
+    const ranges = [...document.querySelectorAll('.range')].map(element => element.getBoundingClientRect());
+    return ranges.flatMap((range, rangeIndex) => refs.flatMap((ref, refIndex) =>
+      range.left < ref.right && range.right > ref.left && range.top < ref.bottom && range.bottom > ref.top
+        ? [{ rangeIndex, refIndex }] : []));
+  });
+  if (overlaps.length) throw new Error(`Range labels overlap ref labels: ${JSON.stringify(overlaps)}`);
+  const initialWidth = Number(await page.locator('.canvas svg').getAttribute('width'));
+  await page.getByRole('button', { name: 'Zoom in' }).click();
+  await page.getByRole('button', { name: 'Reset zoom' }).getByText('110%').waitFor();
+  const zoomedWidth = Number(await page.locator('.canvas svg').getAttribute('width'));
+  if (zoomedWidth <= initialWidth) throw new Error('Zoom in did not increase the graph canvas width');
+  await page.getByRole('button', { name: 'Reset zoom' }).click();
+  await page.getByRole('button', { name: 'Reset zoom' }).getByText('100%').waitFor();
   await page.screenshot({ path: join(imageDir, 'smoke-local-and-remote-branches.png'), fullPage: true });
 
   // Right-click requests host-curated exploration actions.

@@ -80,22 +80,45 @@ export function App() {
 }
 
 function Graph({data, allowed, selected, onSelect, onContextMenu}:{data:GraphPayload;allowed:Set<string>;selected:Set<string>;onSelect:(ref:GitRef,additive:boolean)=>void;onContextMenu:(ref:GitRef,event:MouseEvent)=>void}) {
+  const [zoom, setZoom] = useState(1);
   const commits = new Map(data.graph.nodes.filter(node=>node.commit).map(node=>[node.id,node]));
-  const maxX=Math.max(800,...data.graph.nodes.map(node=>node.x+300)), maxY=Math.max(600,...data.graph.nodes.map(node=>node.y+100));
-  return <section className="canvas"><svg width={maxX} height={maxY}>
+  const refRects = data.graph.nodes.flatMap(node => {
+    if (node.kind !== 'commit') return [];
+    const visibleRefs = node.commit!.refs.filter(ref => allowed.has(ref.fullName));
+    return visibleRefs.map((_, index) => {
+      const position = refPosition(visibleRefs, index);
+      return { x: node.x + position.x, y: node.y + position.y, width: 150, height: 28 };
+    });
+  }).sort((left, right) => left.x - right.x);
+  const rangePositions = new Map(data.graph.nodes.filter(node => node.kind === 'range').map(node => {
+    let x = node.x + (node.range!.expanded ? 90 : 0);
+    for (const rect of refRects) {
+      const overlapsVertically = node.y - 17 < rect.y + rect.height + 8 && node.y + 17 > rect.y - 8;
+      const overlapsHorizontally = x - 8 < rect.x + rect.width + 12 && x + 110 > rect.x - 12;
+      if (overlapsVertically && overlapsHorizontally) x = rect.x + rect.width + 20;
+    }
+    return [node.id, { x, y: node.y }] as const;
+  }));
+  const displayedX = (node: GraphPayload['graph']['nodes'][number]) => rangePositions.get(node.id)?.x ?? node.x;
+  const maxX=Math.max(800,...data.graph.nodes.map(node=>displayedX(node)+300)), maxY=Math.max(600,...data.graph.nodes.map(node=>node.y+100));
+  const updateZoom = (next: number) => setZoom(Math.min(2, Math.max(0.5, Math.round(next * 10) / 10)));
+  return <section className="canvas" onWheel={event=>{if(event.ctrlKey||event.metaKey){event.preventDefault();updateZoom(zoom+(event.deltaY<0?0.1:-0.1));}}}>
+    <div className="zoom-controls" aria-label="Graph zoom controls"><button aria-label="Zoom out" title="Zoom out" disabled={zoom<=0.5} onClick={()=>updateZoom(zoom-0.1)}>−</button><button aria-label="Reset zoom" title="Reset zoom" onClick={()=>setZoom(1)}>{Math.round(zoom*100)}%</button><button aria-label="Zoom in" title="Zoom in" disabled={zoom>=2} onClick={()=>updateZoom(zoom+0.1)}>＋</button></div>
+    <svg width={maxX*zoom} height={maxY*zoom}><g transform={`scale(${zoom})`}>
     <g className="edges">{data.graph.edges.map((edge,index)=>{const from=commits.get(edge.from),to=commits.get(edge.to);if(!from||!to)return null;return <path key={`${edge.from}:${edge.to}:${index}`} d={`M ${from.x} ${from.y} C ${from.x} ${(from.y+to.y)/2}, ${to.x} ${(from.y+to.y)/2}, ${to.x} ${to.y}`} />})}</g>
     {data.graph.nodes.map(node=>{
       if (node.kind === 'range') {
         const expanded = node.range!.expanded;
         const toggle = () => vscode.postMessage({type:'expandRange',rangeId:node.id});
-        return <g key={node.id} className={`range ${expanded?'expanded':''}`} transform={`translate(${node.x+(expanded?90:0)},${node.y})`} onClick={toggle} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();toggle();}}} role="button" tabIndex={0} aria-label={`${expanded?'Collapse':'Expand'} ${node.range!.count} commits`}>
+        const position = rangePositions.get(node.id)!;
+        return <g key={node.id} className={`range ${expanded?'expanded':''}`} transform={`translate(${position.x},${position.y})`} onClick={toggle} onKeyDown={event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();toggle();}}} role="button" tabIndex={0} aria-label={`${expanded?'Collapse':'Expand'} ${node.range!.count} commits`}>
           <title>{expanded?'Collapse commits':'Expand commits'}</title><rect x="-8" y="-17" width="118" height="34" rx="17"/><text x="10" y="5">{expanded?'−':'+'}{node.range!.count} commits</text>
         </g>;
       }
       const visibleRefs = node.commit!.refs.filter(ref=>allowed.has(ref.fullName));
       return <g key={node.id} data-commit={node.id} className={`node ${(data.mergeBaseIds ?? []).includes(node.id)?'merge-base':''}`} transform={`translate(${node.x},${node.y})`}><circle r={node.commit!.refs.length?8:6}/><text className="sha" x="18" y="5">{node.id.slice(0,7)}</text>{visibleRefs.map((ref,index)=>{const position=refPosition(visibleRefs,index);return <g key={ref.fullName} className={`ref ${ref.type} ${selected.has(ref.fullName)?'selected':''}`} transform={`translate(${position.x},${position.y})`} onClick={event=>{event.stopPropagation();onSelect(ref,event.ctrlKey||event.metaKey);}} onContextMenu={event=>onContextMenu(ref,event)} role="button" aria-label={`${ref.name} branch`}><rect width="150" height="28" rx="5"/><text x="9" y="19">{ref.type==='tag'?'◆ ':ref.type==='remoteBranch'?'☁ ':'⑂ '}{ref.name.length>13?ref.name.slice(0,12)+'…':ref.name}{branchState(data,ref)}</text></g>;})}</g>;
     })}
-  </svg><div className="selection-hint">Click to select · Ctrl/Cmd-click two refs to compare · Right-click for comparison and graph actions</div></section>;
+  </g></svg><div className="selection-hint">Click to select · Ctrl/Cmd-click two refs to compare · Right-click for comparison and graph actions</div></section>;
 }
 
 function refPosition(refs: GitRef[], index: number): { x: number; y: number } {

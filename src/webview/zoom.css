@@ -1,0 +1,35 @@
+.zoom-controls {
+  position: sticky;
+  z-index: 5;
+  top: 12px;
+  left: 12px;
+  width: max-content;
+  height: 0;
+  display: flex;
+  gap: 2px;
+}
+
+.zoom-controls button {
+  min-width: 34px;
+  height: 28px;
+  padding: 3px 8px;
+  border: 1px solid #3b4555;
+  background: #171c25;
+  color: #dce2ec;
+}
+
+.zoom-controls button:first-child {
+  border-radius: 5px 0 0 5px;
+}
+
+.zoom-controls button:last-child {
+  border-radius: 0 5px 5px 0;
+}
+
+.zoom-controls button:disabled {
+  color: #687185;
+}
+
+.zoom-controls button:hover:not(:disabled) {
+  background: #2c3543;
+}
