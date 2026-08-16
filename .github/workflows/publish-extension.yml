@@ -37,7 +37,6 @@ jobs:
         run: |
           npm run typecheck
           npm test
-          npm run build
 
       - name: Bump version
         id: version
@@ -46,6 +45,9 @@ jobs:
         run: |
           npm version "$BUMP" --no-git-tag-version
           echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Build extension
+        run: npm run build
 
       - name: Package extension
         env:

@@ -49,6 +49,7 @@ jobs:
       - name: Run webview smoke test
         id: smoke_test
         continue-on-error: true
+        if: steps.smoke_install.outcome == 'success'
         run: |
           set -o pipefail
           npm run smoke:webview 2>&1 | tee artifacts/ci/smoke-test.log
