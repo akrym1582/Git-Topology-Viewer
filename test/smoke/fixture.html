@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Git Topology Webview Smoke Fixture</title>
+    <link rel="stylesheet" href="../../dist/webview.css">
+    <script>
+      window.__vscodeMessages = [];
+      window.acquireVsCodeApi = () => ({
+        postMessage(message) {
+          window.__vscodeMessages.push(message);
+        }
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script src="../../dist/webview.js"></script>
+    <script src="fixture.js"></script>
+  </body>
+</html>

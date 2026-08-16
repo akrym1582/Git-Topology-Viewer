@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git Topology Development"
+  short_description: "Develop and verify the Git Topology Viewer extension"
+  default_prompt: "Implement or review a Git Topology Viewer change while preserving the commit-DAG architecture and validating extension, domain, and webview behavior."

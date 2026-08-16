@@ -1,0 +1,4 @@
+interface:
+  display_name: "Git Topology Webview Smoke Test"
+  short_description: "Render and inspect the bundled topology webview"
+  default_prompt: "Run or update the Git Topology Viewer webview smoke test, inspect its screenshot and report the visual and interaction checks."
