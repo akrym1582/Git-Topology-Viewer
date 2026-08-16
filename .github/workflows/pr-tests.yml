@@ -28,22 +28,30 @@ jobs:
       - name: Run typecheck
         id: typecheck
         continue-on-error: true
-        run: npm run typecheck 2>&1 | tee artifacts/ci/typecheck.log
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee artifacts/ci/typecheck.log
 
       - name: Run unit tests
         id: unit-tests
         continue-on-error: true
-        run: npm test 2>&1 | tee artifacts/ci/unit-tests.log
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee artifacts/ci/unit-tests.log
 
       - name: Install smoke-test browser
         id: smoke-install
         continue-on-error: true
-        run: npm run smoke:install 2>&1 | tee artifacts/ci/smoke-install.log
+        run: |
+          set -o pipefail
+          npm run smoke:install 2>&1 | tee artifacts/ci/smoke-install.log
 
       - name: Run webview smoke test
         id: smoke-test
         continue-on-error: true
-        run: npm run smoke:webview 2>&1 | tee artifacts/ci/smoke-test.log
+        run: |
+          set -o pipefail
+          npm run smoke:webview 2>&1 | tee artifacts/ci/smoke-test.log
 
       - name: Upload test and smoke-test artifacts
         if: always()
