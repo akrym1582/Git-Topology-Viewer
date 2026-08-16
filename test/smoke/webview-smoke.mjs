@@ -39,19 +39,52 @@ try {
   // Rendering: toolbar, refs, collapsed ranges, and vertical/horizontal SVG edges.
   if (await page.locator('.node').count() !== 6) throw new Error('Expected six commit nodes');
   if (await page.locator('.range').count() !== 2) throw new Error('Expected two collapsed ranges');
+
+  // Right-clicking a ref exposes its history action and sends a bounded log request.
+  await page.locator('.ref.localBranch').first().click({ button: 'right' });
+  if (!await page.getByRole('menuitem', { name: 'Current branch' }).isDisabled()) {
+    throw new Error('The current branch switch action should be disabled');
+  }
+  await page.getByRole('menuitem', { name: 'View branch log' }).click();
+  let request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'showRefLog' || request.ref !== 'refs/heads/main') {
+    throw new Error(`Unexpected log request: ${JSON.stringify(request)}`);
+  }
+  await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeRefLog })));
+  await page.getByText('Polish authentication flow').waitFor();
+
+  // Ctrl-clicking a second ref immediately requests a comparison for the pair.
+  await page.locator('.ref.localBranch').nth(1).click({ modifiers: ['Control'] });
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'compareRefs' || request.left !== 'refs/heads/main' || request.right !== 'refs/heads/feature/login') {
+    throw new Error(`Unexpected Ctrl-click comparison: ${JSON.stringify(request)}`);
+  }
+
+  // Local branch operations are exposed as explicit intents; VS Code owns confirmation.
+  await page.locator('.ref.localBranch').nth(1).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Switch to branch…' }).click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'switchBranch' || request.ref !== 'refs/heads/feature/login') {
+    throw new Error(`Unexpected switch request: ${JSON.stringify(request)}`);
+  }
+
   await page.locator('.ref.localBranch').first().click();
   await page.getByRole('heading', { name: 'main' }).waitFor();
 
   // Interaction contract: compare intent is sent to VS Code, then its response renders.
   await page.locator('select').selectOption('refs/heads/develop');
   await page.getByRole('button', { name: 'Compare refs' }).click();
-  const request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'compareRefs' || request.right !== 'refs/heads/develop') {
     throw new Error(`Unexpected compare request: ${JSON.stringify(request)}`);
   }
   await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeComparison })));
   await page.getByText('532', { exact: false }).waitFor();
   await page.getByText('src/AuthService.ts').waitFor();
+
+  // Keep the expanded branch actions visible in the captured visual artifact.
+  await page.locator('.ref.localBranch').nth(1).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Merge into main…' }).waitFor();
 
   await mkdir(resolve(screenshot, '..'), { recursive: true });
   await page.screenshot({ path: screenshot, fullPage: true });

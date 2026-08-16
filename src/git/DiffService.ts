@@ -4,7 +4,17 @@ export class DiffService {
   constructor(private git: GitClient) {}
   private async commits(range: string): Promise<CommitInfo[]> {
     const out = await this.git.run(['log', '--format=%H%x00%s', range]);
-    return out.split('\n').filter(Boolean).map(line => { const [id, subject = ''] = line.split('\0'); return { id, subject }; });
+    return this.parseCommits(out);
+  }
+  async log(ref: string, limit = 100): Promise<CommitInfo[]> {
+    const out = await this.git.run(['log', `--max-count=${limit}`, '--format=%H%x00%s', ref, '--']);
+    return this.parseCommits(out);
+  }
+  private parseCommits(out: string): CommitInfo[] {
+    return out.split('\n').filter(Boolean).map(line => {
+      const [id, subject = ''] = line.split('\0');
+      return { id, subject };
+    });
   }
   async compare(left: string, right: string, mode: 'divergence' | 'snapshot'): Promise<BranchComparison> {
     const [bases, onlyLeft, onlyRight] = await Promise.all([
