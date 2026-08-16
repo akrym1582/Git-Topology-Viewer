@@ -43,7 +43,7 @@ try {
   if (await page.locator('.node').count() !== 6) throw new Error('Expected six commit nodes');
   if (await page.locator('.range').count() !== 2) throw new Error('Expected two collapsed ranges');
   await page.getByText('Remote branches').click();
-  await page.getByText('origin/release').waitFor();
+  await page.locator('.ref.remoteBranch').waitFor();
   await page.screenshot({ path: join(imageDir, 'smoke-local-and-remote-branches.png'), fullPage: true });
 
   // Right-click requests host-curated exploration actions.
@@ -74,13 +74,9 @@ try {
     throw new Error(`Unexpected checkout request: ${JSON.stringify(request)}`);
   }
 
+  // Interaction contract: compare intent is sent to VS Code, then its response renders.
   await page.locator('.ref.localBranch').first().click();
   await page.getByRole('heading', { name: 'main' }).waitFor();
-  await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeRefLog })));
-  await page.getByRole('heading', { name: 'Branch log' }).waitFor();
-  await page.screenshot({ path: join(imageDir, 'smoke-branch-log.png'), fullPage: true });
-
-  // Interaction contract: compare intent is sent to VS Code, then its response renders.
   await page.locator('select').selectOption('refs/heads/develop');
   await page.getByRole('button', { name: 'Compare refs' }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
@@ -90,6 +86,10 @@ try {
   await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeComparison })));
   await page.getByText('532', { exact: false }).waitFor();
   await page.getByText('src/AuthService.ts').waitFor();
+
+  await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeRefLog })));
+  await page.getByRole('heading', { name: 'Branch log' }).waitFor();
+  await page.screenshot({ path: join(imageDir, 'smoke-branch-log.png'), fullPage: true });
 
   // Keep the expanded branch actions visible in the captured visual artifact.
   await page.locator('.ref.localBranch').nth(1).click({ button: 'right' });
