@@ -4,17 +4,39 @@
   "description": "Understand branches, tags, divergence and merges without wading through every commit.",
   "version": "0.1.0",
   "publisher": "git-topology",
-  "engines": { "vscode": "^1.90.0" },
-  "categories": ["SCM Providers", "Visualization"],
-  "activationEvents": ["onCommand:gitTopology.open"],
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Visualization"
+  ],
+  "activationEvents": [
+    "onCommand:gitTopology.open"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
-    "commands": [{ "command": "gitTopology.open", "title": "Git Topology: Open Viewer", "category": "Git Topology" }],
+    "commands": [
+      {
+        "command": "gitTopology.open",
+        "title": "Git Topology: Open Viewer",
+        "category": "Git Topology"
+      }
+    ],
     "configuration": {
       "title": "Git Topology",
       "properties": {
-        "gitTopology.gitPath": { "type": "string", "default": "", "description": "Path to the Git executable. Leave empty to use VS Code's Git path or PATH." },
-        "gitTopology.maxCommits": { "type": "number", "default": 10000, "minimum": 100, "description": "Maximum commits loaded into the in-memory DAG." }
+        "gitTopology.gitPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the Git executable. Leave empty to use VS Code's Git path or PATH."
+        },
+        "gitTopology.maxCommits": {
+          "type": "number",
+          "default": 10000,
+          "minimum": 100,
+          "description": "Maximum commits loaded into the in-memory DAG."
+        }
       }
     }
   },
@@ -22,11 +44,22 @@
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "smoke:webview": "npm run build && node test/smoke/webview-smoke.mjs",
+    "smoke:install": "playwright install chromium"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0", "@types/react": "^18.3.0", "@types/react-dom": "^18.3.0", "@types/vscode": "^1.90.0",
-    "esbuild": "^0.25.0", "typescript": "^5.7.0", "vitest": "^3.0.0"
+    "@playwright/test": "1.55.1",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
   },
-  "dependencies": { "react": "^18.3.1", "react-dom": "^18.3.1" }
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
 }

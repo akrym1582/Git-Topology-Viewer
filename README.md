@@ -20,6 +20,20 @@ npm run build
 
 Open this folder in VS Code, press **F5**, open a Git repository in the Extension Development Host, then run **Git Topology: Open Viewer** from the Command Palette.
 
+### Webview smoke test
+
+Install the pinned Chromium browser once, then render the production webview bundle,
+exercise ref comparison, and save a screenshot:
+
+```sh
+npm run smoke:install
+npm run smoke:webview
+```
+
+The screenshot is written to `artifacts/webview-smoke.png`. The complete environment,
+automated assertions, manual review checklist, and troubleshooting notes live in
+`.agents/skills/git-topology-webview-smoke-test/`.
+
 ## Design
 
 The extension loads SHA/parent/ref summaries first through `git for-each-ref` and `git rev-list`. The immutable DAG is converted into a mode-specific view graph and then laid out. Comparisons and file bodies are loaded only on demand through Git CLI commands.

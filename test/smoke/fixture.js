@@ -1,0 +1,90 @@
+const commits = {
+  head: 'f41acde1234567890',
+  mainline: 'e93b2101234567890',
+  release: 'c81d0451234567890',
+  feature: 'a772b901234567890',
+  develop: '91bd1201234567890',
+  root: '70af9831234567890'
+};
+
+function gitRef(name, type, commitId) {
+  const prefix = type === 'tag' ? 'refs/tags/' : 'refs/heads/';
+  return { name, fullName: `${prefix}${name}`, type, commitId };
+}
+
+const refs = [
+  gitRef('main', 'localBranch', commits.head),
+  gitRef('v1.2.0', 'tag', commits.release),
+  gitRef('feature/login', 'localBranch', commits.feature),
+  gitRef('develop', 'localBranch', commits.develop)
+];
+
+const positions = [
+  [commits.head, 70, 44, [refs[0]]],
+  [commits.mainline, 70, 118, []],
+  [commits.feature, 220, 192, [refs[2]]],
+  [commits.release, 70, 266, [refs[1]]],
+  [commits.develop, 220, 340, [refs[3]]],
+  [commits.root, 70, 414, []]
+];
+
+const nodes = positions.map(([id, x, y, nodeRefs], row) => ({
+  id, kind: 'commit', lane: x === 70 ? 0 : 1, row, x, y,
+  commit: { id, parents: [], refs: nodeRefs }
+}));
+
+nodes.push(
+  {
+    id: 'range:main', kind: 'range', lane: 0, row: 2, x: 70, y: 192,
+    range: { id: 'range:main', fromCommit: commits.mainline, toCommit: commits.release, commits: [], count: 12, expanded: false }
+  },
+  {
+    id: 'range:feature', kind: 'range', lane: 1, row: 4, x: 220, y: 266,
+    range: { id: 'range:feature', fromCommit: commits.feature, toCommit: commits.develop, commits: [], count: 8, expanded: false }
+  }
+);
+
+const edges = [
+  [commits.head, commits.mainline],
+  [commits.mainline, commits.release],
+  [commits.mainline, commits.feature],
+  [commits.feature, commits.develop],
+  [commits.develop, commits.root],
+  [commits.release, commits.root]
+].map(([from, to]) => ({ from, to, hiddenCommitCount: 0 }));
+
+setTimeout(() => {
+  window.dispatchEvent(new MessageEvent('message', {
+    data: {
+      type: 'graph',
+      payload: {
+        repository: 'commerce-platform',
+        mode: 'topology',
+        expandedRangeIds: [],
+        refs,
+        graph: { nodes, edges }
+      }
+    }
+  }));
+}, 50);
+
+window.__smokeComparison = {
+  type: 'comparison',
+  payload: {
+    left: 'refs/heads/main',
+    right: 'refs/heads/develop',
+    mode: 'divergence',
+    mergeBases: [commits.root],
+    ahead: 12,
+    behind: 3,
+    additions: 532,
+    deletions: 128,
+    files: [
+      { status: 'M', path: 'src/AuthService.ts' },
+      { status: 'A', path: 'src/LoginService.ts' },
+      { status: 'D', path: 'src/OldLoginService.ts' }
+    ],
+    onlyLeft: [],
+    onlyRight: []
+  }
+};

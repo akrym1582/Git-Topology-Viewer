@@ -39,7 +39,9 @@ from `domain` to an integration layer. Keep extension/webview messages serializa
    parsing, or message contracts affected by the change.
 4. Run `.agents/skills/git-topology-development/scripts/validate.sh` before commit.
 5. For a perceptible webview change, build and inspect it in VS Code or a browser
-   harness and capture a screenshot.
+   harness and capture a screenshot. Follow
+   `.agents/skills/git-topology-webview-smoke-test/SKILL.md` and run
+   `npm run smoke:webview` for the maintained browser harness.
 6. Commit source changes on the current branch. Do not commit `dist/`, temporary
    repositories, screenshots, or editor state unless explicitly requested.
 

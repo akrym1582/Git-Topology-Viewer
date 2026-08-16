@@ -50,7 +50,8 @@ the Git, domain, VS Code, and webview layers.
 - Add stable React keys, usable keyboard controls, and VS Code-theme-compatible
   colors. Keep history vertical and lanes horizontal.
 - For a visible change, run the build and inspect a realistic graph in the rendered
-  webview; capture a screenshot.
+  webview; use the sibling `git-topology-webview-smoke-test` skill to exercise the
+  production bundle and capture a screenshot.
 
 ## Validate and finish
 
