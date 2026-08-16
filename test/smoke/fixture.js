@@ -16,7 +16,8 @@ const refs = [
   gitRef('main', 'localBranch', commits.head),
   gitRef('v1.2.0', 'tag', commits.release),
   gitRef('feature/login', 'localBranch', commits.feature),
-  gitRef('develop', 'localBranch', commits.develop)
+  gitRef('develop', 'localBranch', commits.develop),
+  { name: 'origin/release', fullName: 'refs/remotes/origin/release', type: 'remoteBranch', commitId: commits.release }
 ];
 
 const positions = [
@@ -60,6 +61,11 @@ setTimeout(() => {
       payload: {
         repository: 'commerce-platform',
         currentBranch: 'main',
+        branchStatuses: [
+          { ref: 'refs/heads/main', local: true, remote: false },
+          { ref: 'refs/heads/feature/login', local: true, remote: false },
+          { ref: 'refs/heads/develop', local: true, remote: false },
+        ],
         mode: 'topology',
         expandedRangeIds: [],
         refs,
