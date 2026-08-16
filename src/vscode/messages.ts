@@ -1,5 +1,8 @@
 import { ViewMode } from '../domain/models';
 
+export type GraphMenuCommand = 'compareCurrent' | 'selectCompareBase' | 'compareBase' | 'compareWith' | 'showMergeBase' | 'showChangedFiles' | 'focus' | 'related' | 'expandCommits' | 'collapseCommits' | 'checkout' | 'createBranch' | 'copyName' | 'copyHash';
+export interface GraphContextMenuItem { command: GraphMenuCommand; label: string; enabled: boolean; visible: boolean; group: 'compare' | 'graph' | 'git' | 'copy' }
+
 type ComparisonMode = 'divergence' | 'snapshot';
 type ChangedFileStatus = 'A' | 'D' | 'M' | 'R' | 'C' | 'T' | 'U' | 'X' | 'B';
 
@@ -7,6 +10,8 @@ export type WebviewRequest =
   | { type: 'refresh' }
   | { type: 'setViewMode'; mode: ViewMode }
   | { type: 'expandRange'; rangeId: string }
+  | { type: 'contextMenu'; nodeType: 'branch' | 'remoteBranch' | 'tag' | 'commit'; nodeId: string; x: number; y: number }
+  | { type: 'runContextCommand'; command: GraphMenuCommand; nodeId: string }
   | { type: 'compareRefs'; left: string; right: string; mode: ComparisonMode }
   | { type: 'showRefLog'; ref: string }
   | { type: 'switchBranch'; ref: string }
@@ -31,6 +36,11 @@ export function isWebviewRequest(value: unknown): value is WebviewRequest {
       return value.mode === 'topology' || value.mode === 'compact' || value.mode === 'full';
     case 'expandRange':
       return isString(value.rangeId);
+    case 'contextMenu':
+      return (value.nodeType === 'branch' || value.nodeType === 'remoteBranch' || value.nodeType === 'tag' || value.nodeType === 'commit')
+        && isString(value.nodeId) && typeof value.x === 'number' && typeof value.y === 'number';
+    case 'runContextCommand':
+      return isString(value.nodeId) && ['compareCurrent','selectCompareBase','compareBase','compareWith','showMergeBase','showChangedFiles','focus','related','expandCommits','collapseCommits','checkout','createBranch','copyName','copyHash'].includes(String(value.command));
     case 'compareRefs':
       return isString(value.left) && isString(value.right)
         && (value.mode === 'divergence' || value.mode === 'snapshot');

@@ -1,10 +1,12 @@
 import React, { MouseEvent, useEffect, useMemo, useState } from 'react';
 import { BranchComparison, GitRef, GraphPayload, RefLog, ViewMode } from '../domain/models';
+import { GraphContextMenuItem } from '../vscode/messages';
 import { vscode } from './vscode';
 
-interface ContextMenuState { ref: GitRef; x: number; y: number }
+interface ContextMenuState { ref: GitRef; x: number; y: number; items: GraphContextMenuItem[] }
 
 export function App() {
+  const dataRef = React.useRef<GraphPayload>();
   const [data, setData] = useState<GraphPayload>();
   const [comparison, setComparison] = useState<BranchComparison>();
   const [refLog, setRefLog] = useState<RefLog>();
@@ -18,11 +20,13 @@ export function App() {
 
   useEffect(() => {
     const receive = (event: MessageEvent) => {
-      if (event.data.type === 'graph') setData(event.data.payload);
+      if (event.data.type === 'graph') { setData(event.data.payload); dataRef.current = event.data.payload; }
       if (event.data.type === 'comparison') setComparison(event.data.payload);
       if (event.data.type === 'refLog') setRefLog(event.data.payload);
       if (event.data.type === 'error') setError(event.data.message);
       if (event.data.type === 'operationResult') setNotice(event.data.message);
+      if (event.data.type === 'contextMenuItems') { const ref = dataRef.current?.refs.find(item => item.fullName === event.data.nodeId); if (ref) setMenu({ ref, x: event.data.x, y: event.data.y, items: event.data.items }); }
+      if (event.data.type === 'focusRef' && event.data.commitId) document.querySelector(`[data-commit="${event.data.commitId}"]`)?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
     };
     addEventListener('message', receive);
     return () => removeEventListener('message', receive);
@@ -61,26 +65,16 @@ export function App() {
     event.preventDefault();
     event.stopPropagation();
     if (!selected.some(item => item.fullName === ref.fullName)) setSelected([ref]);
-    setMenu({ ref, x: Math.min(event.clientX, window.innerWidth - 220), y: Math.min(event.clientY, window.innerHeight - 210) });
+    vscode.postMessage({ type: 'contextMenu', nodeType: ref.type === 'localBranch' ? 'branch' : ref.type, nodeId: ref.fullName, x: Math.min(event.clientX, window.innerWidth - 260), y: Math.min(event.clientY, window.innerHeight - 360) });
   };
-  const showLog = (ref: GitRef) => {
-    setSelected([ref]);
-    setComparison(undefined);
-    setRefLog(undefined);
-    vscode.postMessage({ type: 'showRefLog', ref: ref.fullName });
-    setMenu(undefined);
-  };
-  const runBranchOperation = (type: 'switchBranch' | 'mergeBranch', ref: GitRef) => {
-    vscode.postMessage({ type, ref: ref.fullName });
-    setMenu(undefined);
-  };
+
 
   return <div className="app" onContextMenu={event => event.preventDefault()}>
     <header><div className="brand"><span className="mark">⌁</span><div><strong>Git Topology</strong><small>{data.repository}</small></div></div><div className="modes">{(['topology','compact','full'] as ViewMode[]).map(mode => <button key={mode} className={data.mode === mode ? 'active' : ''} onClick={() => vscode.postMessage({type:'setViewMode',mode})}>{mode[0].toUpperCase()+mode.slice(1)}</button>)}</div><button className="refresh" onClick={() => vscode.postMessage({type:'refresh'})}>↻ Refresh</button></header>
     <div className="filters"><label><input type="checkbox" checked readOnly/> Local branches</label><label><input type="checkbox" checked={tags} onChange={event=>setTags(event.target.checked)}/> Tags</label><label><input type="checkbox" checked={remotes} onChange={event=>setRemotes(event.target.checked)}/> Remote branches</label><input className="search" placeholder="Filter branches…" value={filter} onChange={event=>setFilter(event.target.value)}/><span>{data.graph.nodes.filter(node=>node.kind==='commit').length} nodes · {refs.length} refs</span></div>
     <div className="content"><Graph data={data} allowed={allowed} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/><aside><Inspector selected={selected} refs={refs} comparison={comparison} refLog={refLog} onClose={()=>setSelected([])}/></aside></div>
-    {menu && <div className="context-menu" role="menu" style={{left:menu.x,top:menu.y}} onClick={event=>event.stopPropagation()}><div className="context-title">{menu.ref.name}</div><button role="menuitem" onClick={()=>showLog(menu.ref)}>View branch log</button><button role="menuitem" onClick={()=>{selectRef(menu.ref,true);setMenu(undefined);}}>Add to comparison</button>{menu.ref.type==='localBranch'&&<><div className="context-separator"/><button role="menuitem" disabled={data.currentBranch===menu.ref.name} onClick={()=>runBranchOperation('switchBranch',menu.ref)}>{data.currentBranch===menu.ref.name?'Current branch':'Switch to branch…'}</button><button role="menuitem" disabled={!data.currentBranch||data.currentBranch===menu.ref.name} onClick={()=>runBranchOperation('mergeBranch',menu.ref)}>Merge into {data.currentBranch??'current branch'}…</button></>}</div>}
-    {error && <div className="toast">{error}</div>}
+    {menu && <ContextMenu menu={menu} onRun={command => { vscode.postMessage({ type: 'runContextCommand', command, nodeId: menu.ref.fullName }); setMenu(undefined); }}/>}
+        {error && <div className="toast">{error}</div>}
     {notice && <div className="toast success" role="status" onClick={()=>setNotice('')}>{notice}</div>}
   </div>;
 }
@@ -90,8 +84,8 @@ function Graph({data, allowed, selected, onSelect, onContextMenu}:{data:GraphPay
   const maxX=Math.max(800,...data.graph.nodes.map(node=>node.x+300)), maxY=Math.max(600,...data.graph.nodes.map(node=>node.y+100));
   return <section className="canvas"><svg width={maxX} height={maxY}>
     <g className="edges">{data.graph.edges.map((edge,index)=>{const from=commits.get(edge.from),to=commits.get(edge.to);if(!from||!to)return null;return <path key={`${edge.from}:${edge.to}:${index}`} d={`M ${from.x} ${from.y} C ${from.x} ${(from.y+to.y)/2}, ${to.x} ${(from.y+to.y)/2}, ${to.x} ${to.y}`} />})}</g>
-    {data.graph.nodes.map(node=>node.kind==='range'?<g key={node.id} className="range" transform={`translate(${node.x},${node.y})`} onClick={()=>vscode.postMessage({type:'expandRange',rangeId:node.id})}><rect x="-8" y="-17" width="118" height="34" rx="17"/><text x="10" y="5">+{node.range!.count} commits</text></g>:<g key={node.id} className="node" transform={`translate(${node.x},${node.y})`}><circle r={node.commit!.refs.length?8:6}/><text className="sha" x="18" y="5">{node.id.slice(0,7)}</text>{node.commit!.refs.filter(ref=>allowed.has(ref.fullName)).map((ref,index)=><g key={ref.fullName} className={`ref ${ref.type} ${selected.has(ref.fullName)?'selected':''}`} transform={`translate(${78+index*120},-14)`} onClick={event=>{event.stopPropagation();onSelect(ref,event.ctrlKey||event.metaKey);}} onContextMenu={event=>onContextMenu(ref,event)} role="button" aria-label={`${ref.name} branch`}><rect width="112" height="28" rx="5"/><text x="9" y="19">{ref.type==='tag'?'◆ ':ref.type==='remoteBranch'?'☁ ':'⑂ '}{ref.name.length>13?ref.name.slice(0,12)+'…':ref.name}</text></g>)}</g>)}
-  </svg><div className="selection-hint">Click to select · Ctrl/Cmd-click two refs to compare · Right-click for branch log</div></section>;
+    {data.graph.nodes.map(node=>node.kind==='range'?<g key={node.id} className="range" transform={`translate(${node.x},${node.y})`} onClick={()=>vscode.postMessage({type:'expandRange',rangeId:node.id})}><rect x="-8" y="-17" width="118" height="34" rx="17"/><text x="10" y="5">+{node.range!.count} commits</text></g>:<g key={node.id} data-commit={node.id} className={`node ${(data.mergeBaseIds ?? []).includes(node.id)?'merge-base':''}`} transform={`translate(${node.x},${node.y})`}><circle r={node.commit!.refs.length?8:6}/><text className="sha" x="18" y="5">{node.id.slice(0,7)}</text>{node.commit!.refs.filter(ref=>allowed.has(ref.fullName)).map((ref,index)=><g key={ref.fullName} className={`ref ${ref.type} ${selected.has(ref.fullName)?'selected':''}`} transform={`translate(${78+index*158},-14)`} onClick={event=>{event.stopPropagation();onSelect(ref,event.ctrlKey||event.metaKey);}} onContextMenu={event=>onContextMenu(ref,event)} role="button" aria-label={`${ref.name} branch`}><rect width="150" height="28" rx="5"/><text x="9" y="19">{ref.type==='tag'?'◆ ':ref.type==='remoteBranch'?'☁ ':'⑂ '}{ref.name.length>13?ref.name.slice(0,12)+'…':ref.name}{branchState(data,ref)}</text></g>)}</g>)}
+  </svg><div className="selection-hint">Click to select · Ctrl/Cmd-click two refs to compare · Right-click for comparison and graph actions</div></section>;
 }
 
 function Inspector({selected,refs,comparison,refLog,onClose}:{selected:GitRef[];refs:GitRef[];comparison?:BranchComparison;refLog?:RefLog;onClose:()=>void}) {
@@ -104,3 +98,16 @@ function Inspector({selected,refs,comparison,refLog,onClose}:{selected:GitRef[];
 }
 function RefLogView({value}:{value:RefLog}) { return <div className="ref-log"><hr/><h3>Branch log</h3>{value.commits.length===0?<p>No commits found.</p>:value.commits.map(commit=><div className="log-entry" key={commit.id}><code>{commit.id.slice(0,8)}</code><span>{commit.subject}</span></div>)}</div>; }
 function Comparison({value}:{value:BranchComparison}) { return <div className="results"><h3>Comparison</h3><div className="base"><small>MERGE BASE</small><code>{value.mergeBases[0]?.slice(0,9)??'None'}</code></div><div className="metrics"><div><b>+{value.ahead}</b><small>only left</small></div><div><b>{value.behind}</b><small>only right</small></div><div><b>{value.files.length}</b><small>files</small></div></div><p className="stat"><ins>+{value.additions}</ins> <del>−{value.deletions}</del></p><h3>Changed files</h3><div className="files">{value.files.map(file=><button key={`${file.status}:${file.oldPath ?? ''}:${file.path}`} onClick={()=>vscode.postMessage({type:'openDiff',left:value.left,right:value.right,path:file.path,oldPath:file.oldPath,status:file.status[0]})}><i className={file.status}>{file.status}</i><span>{file.path}</span></button>)}</div></div> }
+
+function branchState(data: GraphPayload, ref: GitRef): string {
+  if (ref.type === 'remoteBranch') return ' [R]';
+  if (ref.type !== 'localBranch') return '';
+  const status = (data.branchStatuses ?? []).find(item => item.ref === ref.fullName);
+  if (!status?.remote) return ' [L]';
+  const movement = status.ahead || status.behind ? `${status.ahead ? ` ↑${status.ahead}` : ''}${status.behind ? ` ↓${status.behind}` : ''}` : ' =';
+  return ` [L][R]${movement}`;
+}
+function ContextMenu({menu,onRun}:{menu:ContextMenuState;onRun:(command:GraphContextMenuItem['command'])=>void}) {
+  const groups: GraphContextMenuItem['group'][] = ['compare','graph','git','copy'];
+  return <div className="context-menu" role="menu" style={{left:menu.x,top:menu.y}} onClick={event=>event.stopPropagation()}><div className="context-title">{menu.ref.name}</div>{groups.map(group => { const items=menu.items.filter(item=>item.visible&&item.group===group); return items.length?<React.Fragment key={group}><div className="context-group">{group}</div>{items.map(item=><button key={item.command} role="menuitem" disabled={!item.enabled} onClick={()=>onRun(item.command)}>{item.label}</button>)}</React.Fragment>:null; })}</div>;
+}

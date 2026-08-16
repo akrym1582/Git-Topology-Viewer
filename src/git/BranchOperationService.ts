@@ -16,6 +16,14 @@ export class BranchOperationService {
     }
   }
 
+  async createBranch(name: string, startPoint: string): Promise<void> {
+    try {
+      await this.git.run(['switch', '-c', name, '--', startPoint]);
+    } catch (error) {
+      throw this.actionableError(error, `Could not create ${name}`);
+    }
+  }
+
   async merge(branch: string): Promise<void> {
     try {
       await this.git.run(['merge', '--no-edit', '--', branch]);
