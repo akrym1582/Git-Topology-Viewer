@@ -41,7 +41,6 @@ jobs:
 
       - name: Install smoke-test browser
         id: smoke_install
-        continue-on-error: true
         run: |
           set -o pipefail
           npm run smoke:install 2>&1 | tee artifacts/ci/smoke-install.log
@@ -66,5 +65,5 @@ jobs:
           retention-days: 14
 
       - name: Fail if a check failed
-        if: steps.typecheck.outcome == 'failure' || steps.unit_tests.outcome == 'failure' || steps.smoke_install.outcome == 'failure' || steps.smoke_test.outcome == 'failure'
+        if: steps.typecheck.outcome == 'failure' || steps.unit_tests.outcome == 'failure' || steps.smoke_test.outcome == 'failure'
         run: exit 1
