@@ -14,6 +14,7 @@ export type WebviewRequest =
   | { type: 'runContextCommand'; command: GraphMenuCommand; nodeId: string }
   | { type: 'compareRefs'; left: string; right: string; mode: ComparisonMode }
   | { type: 'showRefLog'; ref: string }
+  | { type: 'showCommitDetails'; commit: string }
   | { type: 'switchBranch'; ref: string }
   | { type: 'mergeBranch'; ref: string }
   | { type: 'openDiff'; left: string; right: string; path: string; oldPath?: string; status: ChangedFileStatus }
@@ -25,6 +26,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
+}
+
+function isCommitId(value: unknown): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{7,64}$/i.test(value);
 }
 
 export function isWebviewRequest(value: unknown): value is WebviewRequest {
@@ -46,6 +51,8 @@ export function isWebviewRequest(value: unknown): value is WebviewRequest {
         && (value.mode === 'divergence' || value.mode === 'snapshot');
     case 'showRefLog':
       return isString(value.ref);
+    case 'showCommitDetails':
+      return isCommitId(value.commit);
     case 'switchBranch':
     case 'mergeBranch':
       return isString(value.ref);

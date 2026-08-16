@@ -8,7 +8,8 @@ A VS Code extension for reading a repository's **commit DAG** at the level you n
 - Collapsed linear commit ranges that expand independently.
 - Local branches and tags, with optional remote branches and a branch filter.
 - Ref comparison with merge base, unique commits, line statistics, and changed files.
-- Read-only branch file contents opened in VS Code's standard diff editor—no checkout required.
+- Click a branch, tag, or remote ref to inspect its commit history; expand a commit to see file-level additions and deletions.
+- Read-only branch and commit file diffs opened in VS Code's standard diff editor—no checkout required.
 - Git CLI discovery from VS Code's Git extension, `gitTopology.gitPath`, then `PATH`.
 
 ## Open the viewer
@@ -19,7 +20,7 @@ run **Git Topology: Open Viewer** from the Command Palette.
 
 ## Run locally
 
-```sh
+```powershell
 npm install
 npm run build
 ```
@@ -32,7 +33,7 @@ Development Host, then use the **Git Topology** icon in the Activity Bar.
 Install the pinned Chromium browser once, then render the production webview bundle,
 exercise ref comparison, and save a screenshot:
 
-```sh
+```powershell
 npm run smoke:install
 npm run smoke:webview
 ```
@@ -44,6 +45,8 @@ automated assertions, manual review checklist, and troubleshooting notes live in
 ## Sample
 
 ![Git Topology Viewer sample](docs/images/webview-smoke.png)
+
+![Commit history and changed files](docs/images/smoke-branch-log.png)
 
 ## Design
 

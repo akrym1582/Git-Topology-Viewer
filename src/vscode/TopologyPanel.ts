@@ -72,6 +72,7 @@ export class TopologyPanel {
         this.assertKnownRef(message.ref);
         this.post({ type: 'refLog', payload: { ref: message.ref, commits: await this.diff.log(message.ref) } });
       }
+      if (message.type === 'showCommitDetails') this.post({ type: 'commitDetails', payload: await this.diff.commitDetails(message.commit) });
       if (message.type === 'switchBranch') await this.switchBranch(message.ref);
       if (message.type === 'mergeBranch') await this.mergeBranch(message.ref);
       if (message.type === 'openDiff') {

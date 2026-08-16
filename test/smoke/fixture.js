@@ -126,6 +126,20 @@ window.__smokeRefLog = {
     ]
   }
 };
+
+window.__smokeCommitDetails = {
+  type: 'commitDetails',
+  payload: {
+    commit: { id: commits.head, subject: 'Polish authentication flow' },
+    parent: commits.mainline,
+    additions: 14,
+    deletions: 3,
+    files: [
+      { status: 'M', path: 'src/AuthService.ts', additions: 10, deletions: 2 },
+      { status: 'A', path: 'src/LoginService.ts', additions: 4, deletions: 1 }
+    ]
+  }
+};
 let handledMenuRequests = 0;
 setInterval(() => {
   const requests = window.__vscodeMessages.filter(message => message.type === 'contextMenu');

@@ -1,5 +1,5 @@
 import React, { MouseEvent, useEffect, useMemo, useState } from 'react';
-import { BranchComparison, GitRef, GraphPayload, RefLog, ViewMode } from '../domain/models';
+import { BranchComparison, CommitDetails, GitRef, GraphPayload, RefLog, ViewMode } from '../domain/models';
 import { GraphContextMenuItem } from '../vscode/messages';
 import { vscode } from './vscode';
 
@@ -10,6 +10,7 @@ export function App() {
   const [data, setData] = useState<GraphPayload>();
   const [comparison, setComparison] = useState<BranchComparison>();
   const [refLog, setRefLog] = useState<RefLog>();
+  const [commitDetails, setCommitDetails] = useState<CommitDetails>();
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [tags, setTags] = useState(true);
@@ -24,7 +25,8 @@ export function App() {
     const receive = (event: MessageEvent) => {
       if (event.data.type === 'graph') { setData(event.data.payload); dataRef.current = event.data.payload; }
       if (event.data.type === 'comparison') setComparison(event.data.payload);
-      if (event.data.type === 'refLog') setRefLog(event.data.payload);
+      if (event.data.type === 'refLog') { setRefLog(event.data.payload); setCommitDetails(undefined); }
+      if (event.data.type === 'commitDetails') setCommitDetails(event.data.payload);
       if (event.data.type === 'error') setError(event.data.message);
       if (event.data.type === 'operationResult') setNotice(event.data.message);
       if (event.data.type === 'contextMenuItems') { const ref = dataRef.current?.refs.find(item => item.fullName === event.data.nodeId); if (ref) setMenu({ ref, x: event.data.x, y: event.data.y, items: event.data.items }); }
@@ -49,9 +51,11 @@ export function App() {
   const refs = data.refs.filter(ref => allowed.has(ref.fullName));
   const selectRef = (ref: GitRef, additive: boolean) => {
     setRefLog(undefined);
+    setCommitDetails(undefined);
     setComparison(undefined);
     if (!additive) {
       setSelected([ref]);
+      vscode.postMessage({ type: 'showRefLog', ref: ref.fullName });
       return;
     }
     const without = selected.filter(item => item.fullName !== ref.fullName);
@@ -73,7 +77,7 @@ export function App() {
   return <div className="app" onContextMenu={event => event.preventDefault()}>
     <header><div className="brand"><span className="mark">⌁</span><div><strong>Git Topology</strong><small>{data.repository}</small></div></div><div className="modes">{(['topology', 'compact', 'full'] as ViewMode[]).map(mode => <button key={mode} className={data.mode === mode ? 'active' : ''} onClick={() => vscode.postMessage({ type: 'setViewMode', mode })}>{mode[0].toUpperCase() + mode.slice(1)}</button>)}</div><button className="refresh" onClick={() => vscode.postMessage({ type: 'refresh' })}>↻ Refresh</button></header>
     <div className="filters"><label><input type="checkbox" checked={tags} onChange={event => setTags(event.target.checked)}/> Tags</label><label><input type="checkbox" checked={remotes} onChange={event => setRemotes(event.target.checked)}/> Remote branches</label><label title="Show the latest commit ID below each branch name; expanded ranges show every commit ID"><input type="checkbox" checked={commitIds} onChange={event => setCommitIds(event.target.checked)}/> Commit IDs</label><input className="search" placeholder="Filter branches…" value={filter} onChange={event => setFilter(event.target.value)}/><button className="toggle-inspector" aria-pressed={inspectorVisible} onClick={() => setInspectorVisible(value => !value)}>{inspectorVisible ? 'Hide details' : 'Show details'}</button><span>{data.graph.nodes.filter(node => node.kind === 'commit').length} nodes · {refs.length} refs</span></div>
-    <div className={`content ${inspectorVisible ? '' : 'inspector-hidden'}`}><Graph data={data} allowed={allowed} showCommitIds={commitIds} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/>{inspectorVisible && <aside><Inspector selected={selected} refs={refs} comparison={comparison} refLog={refLog} onClose={() => setSelected([])}/></aside>}</div>
+    <div className={`content ${inspectorVisible ? '' : 'inspector-hidden'}`}><Graph data={data} allowed={allowed} showCommitIds={commitIds} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/>{inspectorVisible && <aside><Inspector selected={selected} refs={refs} comparison={comparison} refLog={refLog} commitDetails={commitDetails} onClose={() => setSelected([])}/></aside>}</div>
     {menu && <ContextMenu menu={menu} onRun={command => { vscode.postMessage({ type: 'runContextCommand', command, nodeId: menu.ref.fullName }); setMenu(undefined); }}/>}
     {error && <div className="toast">{error}</div>}
     {notice && <div className="toast success" role="status" onClick={() => setNotice('')}>{notice}</div>}
@@ -144,17 +148,18 @@ function layoutRefs(refs: GitRef[], height: number, anchorY: number): RefLayout 
   return { refs: positionedRefs, anchor };
 }
 
-function Inspector({ selected, refs, comparison, refLog, onClose }: { selected: GitRef[]; refs: GitRef[]; comparison?: BranchComparison; refLog?: RefLog; onClose: () => void }) {
+function Inspector({ selected, refs, comparison, refLog, commitDetails, onClose }: { selected: GitRef[]; refs: GitRef[]; comparison?: BranchComparison; refLog?: RefLog; commitDetails?: CommitDetails; onClose: () => void }) {
   const primary = selected[0];
   const [other, setOther] = useState('');
   const [mode, setMode] = useState<'divergence' | 'snapshot'>('divergence');
   useEffect(() => setOther(selected[1]?.fullName ?? refs.find(ref => ref.fullName !== primary?.fullName)?.fullName ?? ''), [primary, selected[1], refs]);
-  if (!primary) return <div className="empty"><span>⑂</span><h3>Select a branch or tag</h3><p>Ctrl/Cmd-click two refs to compare them, or right-click a ref to view its log.</p></div>;
+  if (!primary) return <div className="empty"><span>⑂</span><h3>Select a branch or tag</h3><p>Click a ref to inspect its commit history, Ctrl/Cmd-click two refs to compare them.</p></div>;
   const compare = () => vscode.postMessage({ type: 'compareRefs', left: primary.fullName, right: other, mode });
-  return <div className="inspector"><button className="close" aria-label="Close inspector" title="Close inspector" onClick={onClose}>×</button><small>{selected.length === 2 ? 'COMPARING REFS' : primary.type.replace(/([A-Z])/g, ' $1').toUpperCase()}</small><h2>{selected.length === 2 ? `${primary.name} ↔ ${selected[1].name}` : primary.name}</h2><code>{primary.commitId.slice(0, 12)}</code><div className="actions"><button onClick={() => vscode.postMessage({ type: 'copy', value: primary.name })}>Copy name</button><button onClick={() => vscode.postMessage({ type: 'copy', value: primary.commitId })}>Copy SHA</button></div>{refLog?.ref === primary.fullName ? <RefLogView value={refLog}/> : <><hr/><h3>Compare with</h3><select value={other} onChange={event => setOther(event.target.value)}>{refs.filter(ref => ref.fullName !== primary.fullName).map(ref => <option key={ref.fullName} value={ref.fullName}>{ref.name}</option>)}</select><label className="radio"><input type="radio" checked={mode === 'divergence'} onChange={() => setMode('divergence')}/> Changes since divergence</label><label className="radio"><input type="radio" checked={mode === 'snapshot'} onChange={() => setMode('snapshot')}/> Current snapshots</label><button className="primary" disabled={!other} onClick={compare}>Compare refs</button>{comparison && comparison.left === primary.fullName && <Comparison value={comparison}/>}</>}</div>;
+  return <div className="inspector"><button className="close" aria-label="Close inspector" title="Close inspector" onClick={onClose}>×</button><small>{selected.length === 2 ? 'COMPARING REFS' : primary.type.replace(/([A-Z])/g, ' $1').toUpperCase()}</small><h2>{selected.length === 2 ? `${primary.name} ↔ ${selected[1].name}` : primary.name}</h2><code>{primary.commitId.slice(0, 12)}</code><div className="actions"><button onClick={() => vscode.postMessage({ type: 'copy', value: primary.name })}>Copy name</button><button onClick={() => vscode.postMessage({ type: 'copy', value: primary.commitId })}>Copy SHA</button></div>{refLog?.ref === primary.fullName ? <RefLogView value={refLog} details={commitDetails} onSelectCommit={commit => vscode.postMessage({ type: 'showCommitDetails', commit })}/> : <><hr/><h3>Compare with</h3><select value={other} onChange={event => setOther(event.target.value)}>{refs.filter(ref => ref.fullName !== primary.fullName).map(ref => <option key={ref.fullName} value={ref.fullName}>{ref.name}</option>)}</select><label className="radio"><input type="radio" checked={mode === 'divergence'} onChange={() => setMode('divergence')}/> Changes since divergence</label><label className="radio"><input type="radio" checked={mode === 'snapshot'} onChange={() => setMode('snapshot')}/> Current snapshots</label><button className="primary" disabled={!other} onClick={compare}>Compare refs</button>{comparison && comparison.left === primary.fullName && <Comparison value={comparison}/>}</>}</div>;
 }
 
-function RefLogView({ value }: { value: RefLog }) { return <div className="ref-log"><hr/><h3>Branch log</h3>{value.commits.length === 0 ? <p>No commits found.</p> : value.commits.map(commit => <div className="log-entry" key={commit.id}><code>{commit.id.slice(0, 8)}</code><span>{commit.subject}</span></div>)}</div>; }
+function RefLogView({ value, details, onSelectCommit }: { value: RefLog; details?: CommitDetails; onSelectCommit: (commit: string) => void }) { return <div className="ref-log"><hr/><h3>Commit history</h3>{value.commits.length === 0 ? <p>No commits found.</p> : value.commits.map(commit => <React.Fragment key={commit.id}><button className={`log-entry ${details?.commit.id === commit.id ? 'selected' : ''}`} aria-label={`Show changes for ${commit.id}`} onClick={() => onSelectCommit(commit.id)}><code>{commit.id.slice(0, 8)}</code><span>{commit.subject}</span></button>{details?.commit.id === commit.id && <CommitFiles value={details}/>}</React.Fragment>)}</div>; }
+function CommitFiles({ value }: { value: CommitDetails }) { return <div className="commit-files"><div className="metrics"><div><b>{value.files.length}</b><small>files</small></div><div><b className="added">+{value.additions}</b><small>added</small></div><div><b className="removed">−{value.deletions}</b><small>removed</small></div></div>{value.files.length === 0 ? <p>No file changes.</p> : <div className="files">{value.files.map(file => <button key={`${file.status}:${file.oldPath ?? ''}:${file.path}`} onClick={() => vscode.postMessage({ type: 'openDiff', left: value.commit.id, right: value.parent ?? value.commit.id, path: file.path, oldPath: file.oldPath, status: file.status[0] })}><i className={file.status}>{file.status}</i><span>{file.path}</span><small><ins>+{file.additions ?? 0}</ins> <del>−{file.deletions ?? 0}</del></small></button>)}</div>}</div>; }
 function Comparison({ value }: { value: BranchComparison }) { return <div className="results"><h3>Comparison</h3><div className="base"><small>MERGE BASE</small><code>{value.mergeBases[0]?.slice(0, 9) ?? 'None'}</code></div><div className="metrics"><div><b>+{value.ahead}</b><small>only left</small></div><div><b>{value.behind}</b><small>only right</small></div><div><b>{value.files.length}</b><small>files</small></div></div><p className="stat"><ins>+{value.additions}</ins> <del>−{value.deletions}</del></p><h3>Changed files</h3><div className="files">{value.files.map(file => <button key={`${file.status}:${file.oldPath ?? ''}:${file.path}`} onClick={() => vscode.postMessage({ type: 'openDiff', left: value.left, right: value.right, path: file.path, oldPath: file.oldPath, status: file.status[0] })}><i className={file.status}>{file.status}</i><span>{file.path}</span></button>)}</div></div>; }
 
 function branchState(data: GraphPayload, ref: GitRef): string {

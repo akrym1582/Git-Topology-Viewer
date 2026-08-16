@@ -10,7 +10,8 @@ export interface ViewNode { id: string; kind: 'commit' | 'range'; commit?: Commi
 export interface ViewEdge { from: string; to: string; hiddenCommitCount: number }
 export interface ViewGraph { nodes: ViewNode[]; edges: ViewEdge[] }
 export interface BranchComparison { left: string; right: string; mode: 'divergence' | 'snapshot'; mergeBases: string[]; ahead: number; behind: number; additions: number; deletions: number; files: ChangedFile[]; onlyLeft: CommitInfo[]; onlyRight: CommitInfo[] }
-export interface ChangedFile { status: string; path: string; oldPath?: string }
+export interface ChangedFile { status: string; path: string; oldPath?: string; additions?: number; deletions?: number }
 export interface CommitInfo { id: string; subject: string }
 export interface RefLog { ref: string; commits: CommitInfo[] }
+export interface CommitDetails { commit: CommitInfo; parent?: string; additions: number; deletions: number; files: ChangedFile[] }
 export interface GraphPayload { graph: ViewGraph; refs: GitRef[]; branchStatuses: BranchStatus[]; repository: string; currentBranch?: string; compareBase?: string; mergeBaseIds: string[]; focusedRef?: string; mode: ViewMode; expandedRangeIds: string[] }

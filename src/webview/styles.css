@@ -60,7 +60,9 @@ aside { background: var(--panel); border-left: 1px solid #292f3a; overflow: auto
 .base { display: flex; justify-content: space-between; }
 .stat ins { color: #5bdb95; text-decoration: none; }
 .stat del { color: #f37981; text-decoration: none; }
-.files button { width: 100%; display: flex; gap: 8px; background: transparent; border: 0; border-top: 1px solid #2d3440; padding: 9px 2px; text-align: left; }
+.files button { width: 100%; display: flex; gap: 8px; align-items: center; background: transparent; border: 0; border-top: 1px solid #2d3440; padding: 9px 2px; text-align: left; }
+.files button span { flex: 1; overflow-wrap: anywhere; }
+.files button small { white-space: nowrap; }
 .files i { font-style: normal; color: #69d49b; }
 .files i.D { color: #ef737b; }
 .files i.M { color: #e7b85f; }
@@ -77,8 +79,13 @@ aside { background: var(--panel); border-left: 1px solid #292f3a; overflow: auto
 .context-menu button:disabled { color: #747d8e; background: transparent; }
 .context-separator { height: 1px; margin: 5px; background: #394150; }
 .ref-log { margin-top: 16px; }
-.log-entry { display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 8px; padding: 9px 0; border-top: 1px solid #2d3440; }
+.log-entry { width: 100%; display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 8px; padding: 9px 0; border: 0; border-top: 1px solid #2d3440; background: transparent; text-align: left; }
+.log-entry:hover, .log-entry.selected { background: #202837; }
 .log-entry span { overflow-wrap: anywhere; color: #c9d0dc; }
+.commit-files { margin: 0 0 12px; padding: 0 8px 8px; border: 1px solid #354158; border-top: 0; background: #111720; }
+.commit-files .metrics { margin: 0 -8px 8px; }
+.added, .files ins { color: #5bdb95; text-decoration: none; }
+.removed, .files del { color: #f37981; text-decoration: none; }
 .context-group { text-transform: uppercase; color: var(--accent); font-size: 9px; font-weight: 700; letter-spacing: 1px; padding: 8px 10px 3px; border-top: 1px solid #394150; }
 .node.merge-base circle { fill: #d7ad4b; stroke: #fff; stroke-width: 4; filter: drop-shadow(0 0 6px #d7ad4b); }
 .node.merge-base:after { content: 'Merge Base'; }

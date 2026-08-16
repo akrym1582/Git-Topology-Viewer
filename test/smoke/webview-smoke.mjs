@@ -165,19 +165,25 @@ try {
 
   await page.locator('.ref.localBranch').first().click();
   await page.getByRole('heading', { name: 'main' }).waitFor();
-  // Interaction contract: compare intent is sent to VS Code, then its response renders.
-  await page.locator('select').selectOption('refs/heads/develop');
-  await page.getByRole('button', { name: 'Compare refs' }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
-  if (request?.type !== 'compareRefs' || request.right !== 'refs/heads/develop') {
-    throw new Error(`Unexpected compare request: ${JSON.stringify(request)}`);
+  if (request?.type !== 'showRefLog' || request.ref !== 'refs/heads/main') {
+    throw new Error(`Unexpected ref history request: ${JSON.stringify(request)}`);
   }
-  await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeComparison })));
-  await page.getByText('532', { exact: false }).waitFor();
-  await page.getByText('src/AuthService.ts').waitFor();
-
   await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeRefLog })));
-  await page.getByRole('heading', { name: 'Branch log' }).waitFor();
+  await page.getByRole('heading', { name: 'Commit history' }).waitFor();
+  await page.getByRole('button', { name: 'Show changes for f41acde1234567890' }).click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'showCommitDetails' || request.commit !== 'f41acde1234567890') {
+    throw new Error(`Unexpected commit details request: ${JSON.stringify(request)}`);
+  }
+  await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeCommitDetails })));
+  await page.getByText('14', { exact: false }).waitFor();
+  await page.getByText('src/AuthService.ts').waitFor();
+  await page.getByText('src/AuthService.ts').click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'openDiff' || request.left !== 'f41acde1234567890' || request.right !== 'e93b2101234567890' || request.path !== 'src/AuthService.ts' || request.status !== 'M') {
+    throw new Error(`Unexpected commit file diff request: ${JSON.stringify(request)}`);
+  }
   await page.screenshot({ path: join(imageDir, 'smoke-branch-log.png'), fullPage: true });
 
   // Keep the expanded branch actions visible in the captured visual artifact.
