@@ -22,12 +22,12 @@ const refs = [
 ];
 
 const positions = [
-  [commits.head, 70, 44, [refs[0]]],
-  [commits.mainline, 70, 118, []],
-  [commits.feature, 220, 192, [refs[2]]],
-  [commits.release, 70, 266, [refs[1], refs[4], refs[5]]],
-  [commits.develop, 220, 340, [refs[3]]],
-  [commits.root, 70, 414, []]
+  [commits.head, 70, 90, [refs[0]]],
+  [commits.mainline, 70, 200, []],
+  [commits.feature, 220, 310, [refs[2]]],
+  [commits.release, 70, 420, [refs[1], refs[4], refs[5]]],
+  [commits.develop, 220, 530, [refs[3]]],
+  [commits.root, 70, 640, []]
 ];
 
 const nodes = positions.map(([id, x, y, nodeRefs], row) => ({
@@ -37,11 +37,11 @@ const nodes = positions.map(([id, x, y, nodeRefs], row) => ({
 
 nodes.push(
   {
-    id: 'range:main', kind: 'range', lane: 0, row: 2, x: 70, y: 192,
+    id: 'range:main', kind: 'range', lane: 0, row: 2, x: 70, y: 310,
     range: { id: 'range:main', fromCommit: commits.mainline, toCommit: commits.release, commits: [], count: 12, expanded: false }
   },
   {
-    id: 'range:feature', kind: 'range', lane: 1, row: 4, x: 220, y: 266,
+    id: 'range:feature', kind: 'range', lane: 1, row: 4, x: 220, y: 420,
     range: { id: 'range:feature', fromCommit: commits.feature, toCommit: commits.develop, commits: [], count: 8, expanded: false }
   }
 );

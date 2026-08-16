@@ -1,5 +1,8 @@
 import { CommitGraph, CollapsedCommitRange, ViewGraph, ViewMode, ViewNode } from './models';
 
+const TOP_PADDING = 90;
+const ROW_HEIGHT = 110;
+
 export class TopologyBuilder {
   build(graph: CommitGraph, mode: ViewMode, expanded = new Set<string>()): ViewGraph {
     const children = new Map<string, number>();
@@ -21,7 +24,7 @@ export class TopologyBuilder {
     }
     const ordered = graph.order.filter(id => visible.has(id));
     const lanes = this.assignLanes(graph, ordered, visible);
-    const nodes: ViewNode[] = ordered.map((id, row) => ({ id, kind: 'commit', commit: graph.nodes.get(id), lane: lanes.get(id)!, row, x: 70 + lanes.get(id)! * 150, y: 44 + row * 74 }));
+    const nodes: ViewNode[] = ordered.map((id, row) => ({ id, kind: 'commit', commit: graph.nodes.get(id), lane: lanes.get(id)!, row, x: 70 + lanes.get(id)! * 150, y: TOP_PADDING + row * ROW_HEIGHT }));
     const usedRangeLanes = new Map<string, Set<number>>();
     for (const range of ranges) {
       const fromIndex = ordered.indexOf(range.fromCommit); const toIndex = ordered.indexOf(range.toCommit);
@@ -39,7 +42,7 @@ export class TopologyBuilder {
       }
       used.add(lane);
       usedRangeLanes.set(range.fromCommit, used);
-      nodes.push({ id: range.id, kind: 'range', range, lane, row, x: 70 + lane * 150, y: 44 + row * 74 });
+      nodes.push({ id: range.id, kind: 'range', range, lane, row, x: 70 + lane * 150, y: TOP_PADDING + row * ROW_HEIGHT });
     }
     const visibleOrdered = [...nodes].filter(n => n.kind === 'commit').sort((a,b) => a.row-b.row);
     const edges = [] as ViewGraph['edges'];

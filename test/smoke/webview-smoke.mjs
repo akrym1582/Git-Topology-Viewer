@@ -62,6 +62,15 @@ try {
   if (remoteLabels.length !== 2 || remoteLabels[0][0] !== remoteLabels[1][0] || remoteLabels[0][1] === remoteLabels[1][1]) {
     throw new Error(`Expected two remote refs stacked vertically: ${JSON.stringify(remoteLabels)}`);
   }
+  const refsBelowCommitIds = await page.evaluate(() => [...document.querySelectorAll('.node')].flatMap(node => {
+    const sha = node.querySelector('.sha')?.getBoundingClientRect();
+    if (!sha) return [];
+    return [...node.querySelectorAll('.ref')]
+      .map(ref => ref.getBoundingClientRect())
+      .filter(ref => ref.bottom > sha.top)
+      .map(() => node.getAttribute('data-commit'));
+  }));
+  if (refsBelowCommitIds.length) throw new Error(`Expected refs above commit IDs: ${JSON.stringify(refsBelowCommitIds)}`);
   const overlaps = await page.evaluate(() => {
     const refs = [...document.querySelectorAll('.ref')].map(element => element.getBoundingClientRect());
     const ranges = [...document.querySelectorAll('.range')].map(element => element.getBoundingClientRect());

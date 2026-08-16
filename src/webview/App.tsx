@@ -126,11 +126,11 @@ function refPosition(refs: GitRef[], index: number): { x: number; y: number } {
   const remoteRefs = refs.filter(candidate => candidate.type === 'remoteBranch');
   if (ref.type === 'remoteBranch') {
     const remoteIndex = remoteRefs.findIndex(candidate => candidate.fullName === ref.fullName);
-    return { x: 78 + Math.floor(remoteIndex / 2) * 158, y: -14 + (remoteIndex % 2) * 34 };
+    return { x: 18 + Math.floor(remoteIndex / 2) * 158, y: -68 + (remoteIndex % 2) * 34 };
   }
   const regularIndex = refs.slice(0, index).filter(candidate => candidate.type !== 'remoteBranch').length;
   const remoteColumns = Math.ceil(remoteRefs.length / 2);
-  return { x: 78 + (remoteColumns + regularIndex) * 158, y: -14 };
+  return { x: 18 + (remoteColumns + regularIndex) * 158, y: -34 };
 }
 
 function Inspector({selected,refs,comparison,refLog,onClose}:{selected:GitRef[];refs:GitRef[];comparison?:BranchComparison;refLog?:RefLog;onClose:()=>void}) {
