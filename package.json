@@ -2,7 +2,7 @@
   "name": "git-topology-viewer",
   "displayName": "Git Topology Viewer",
   "description": "Understand branches, tags, divergence and merges without wading through every commit.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "git-topology",
   "engines": {
     "vscode": "^1.90.0"
