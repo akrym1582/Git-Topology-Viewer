@@ -55,6 +55,13 @@ try {
   await page.getByRole('button', { name: 'Expand 12 commits' }).waitFor();
   await page.getByText('Remote branches').click();
   await page.locator('.ref.remoteBranch').waitFor();
+  const remoteLabels = await page.locator('.ref.remoteBranch').evaluateAll(elements => elements.map(element => {
+    const transform = element.getAttribute('transform') ?? '';
+    return transform.match(/translate\(([^,]+),([^\)]+)\)/)?.slice(1) ?? [];
+  }));
+  if (remoteLabels.length !== 2 || remoteLabels[0][0] !== remoteLabels[1][0] || remoteLabels[0][1] === remoteLabels[1][1]) {
+    throw new Error(`Expected two remote refs stacked vertically: ${JSON.stringify(remoteLabels)}`);
+  }
   await page.screenshot({ path: join(imageDir, 'smoke-local-and-remote-branches.png'), fullPage: true });
 
   // Right-click requests host-curated exploration actions.

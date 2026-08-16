@@ -92,9 +92,22 @@ function Graph({data, allowed, selected, onSelect, onContextMenu}:{data:GraphPay
           <title>{expanded?'Collapse commits':'Expand commits'}</title><rect x="-8" y="-17" width="118" height="34" rx="17"/><text x="10" y="5">{expanded?'−':'+'}{node.range!.count} commits</text>
         </g>;
       }
-      return <g key={node.id} data-commit={node.id} className={`node ${(data.mergeBaseIds ?? []).includes(node.id)?'merge-base':''}`} transform={`translate(${node.x},${node.y})`}><circle r={node.commit!.refs.length?8:6}/><text className="sha" x="18" y="5">{node.id.slice(0,7)}</text>{node.commit!.refs.filter(ref=>allowed.has(ref.fullName)).map((ref,index)=><g key={ref.fullName} className={`ref ${ref.type} ${selected.has(ref.fullName)?'selected':''}`} transform={`translate(${78+index*158},-14)`} onClick={event=>{event.stopPropagation();onSelect(ref,event.ctrlKey||event.metaKey);}} onContextMenu={event=>onContextMenu(ref,event)} role="button" aria-label={`${ref.name} branch`}><rect width="150" height="28" rx="5"/><text x="9" y="19">{ref.type==='tag'?'◆ ':ref.type==='remoteBranch'?'☁ ':'⑂ '}{ref.name.length>13?ref.name.slice(0,12)+'…':ref.name}{branchState(data,ref)}</text></g>)}</g>;
+      const visibleRefs = node.commit!.refs.filter(ref=>allowed.has(ref.fullName));
+      return <g key={node.id} data-commit={node.id} className={`node ${(data.mergeBaseIds ?? []).includes(node.id)?'merge-base':''}`} transform={`translate(${node.x},${node.y})`}><circle r={node.commit!.refs.length?8:6}/><text className="sha" x="18" y="5">{node.id.slice(0,7)}</text>{visibleRefs.map((ref,index)=>{const position=refPosition(visibleRefs,index);return <g key={ref.fullName} className={`ref ${ref.type} ${selected.has(ref.fullName)?'selected':''}`} transform={`translate(${position.x},${position.y})`} onClick={event=>{event.stopPropagation();onSelect(ref,event.ctrlKey||event.metaKey);}} onContextMenu={event=>onContextMenu(ref,event)} role="button" aria-label={`${ref.name} branch`}><rect width="150" height="28" rx="5"/><text x="9" y="19">{ref.type==='tag'?'◆ ':ref.type==='remoteBranch'?'☁ ':'⑂ '}{ref.name.length>13?ref.name.slice(0,12)+'…':ref.name}{branchState(data,ref)}</text></g>;})}</g>;
     })}
   </svg><div className="selection-hint">Click to select · Ctrl/Cmd-click two refs to compare · Right-click for comparison and graph actions</div></section>;
+}
+
+function refPosition(refs: GitRef[], index: number): { x: number; y: number } {
+  const ref = refs[index];
+  const remoteRefs = refs.filter(candidate => candidate.type === 'remoteBranch');
+  if (ref.type === 'remoteBranch') {
+    const remoteIndex = remoteRefs.findIndex(candidate => candidate.fullName === ref.fullName);
+    return { x: 78 + Math.floor(remoteIndex / 2) * 158, y: -14 + (remoteIndex % 2) * 34 };
+  }
+  const regularIndex = refs.slice(0, index).filter(candidate => candidate.type !== 'remoteBranch').length;
+  const remoteColumns = Math.ceil(remoteRefs.length / 2);
+  return { x: 78 + (remoteColumns + regularIndex) * 158, y: -14 };
 }
 
 function Inspector({selected,refs,comparison,refLog,onClose}:{selected:GitRef[];refs:GitRef[];comparison?:BranchComparison;refLog?:RefLog;onClose:()=>void}) {

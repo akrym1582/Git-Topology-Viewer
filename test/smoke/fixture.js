@@ -17,6 +17,7 @@ const refs = [
   gitRef('v1.2.0', 'tag', commits.release),
   gitRef('feature/login', 'localBranch', commits.feature),
   gitRef('develop', 'localBranch', commits.develop),
+  { name: 'origin/HEAD', fullName: 'refs/remotes/origin/HEAD', type: 'remoteBranch', commitId: commits.release },
   { name: 'origin/release', fullName: 'refs/remotes/origin/release', type: 'remoteBranch', commitId: commits.release }
 ];
 
@@ -24,7 +25,7 @@ const positions = [
   [commits.head, 70, 44, [refs[0]]],
   [commits.mainline, 70, 118, []],
   [commits.feature, 220, 192, [refs[2]]],
-  [commits.release, 70, 266, [refs[1], refs[4]]],
+  [commits.release, 70, 266, [refs[1], refs[4], refs[5]]],
   [commits.develop, 220, 340, [refs[3]]],
   [commits.root, 70, 414, []]
 ];
