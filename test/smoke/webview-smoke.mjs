@@ -54,7 +54,7 @@ try {
   }
   await page.getByRole('button', { name: 'Expand 12 commits' }).waitFor();
   await page.getByText('Remote branches').click();
-  await page.locator('.ref.remoteBranch').waitFor();
+  await page.locator('.ref.remoteBranch').first().waitFor();
   const remoteLabels = await page.locator('.ref.remoteBranch').evaluateAll(elements => elements.map(element => {
     const transform = element.getAttribute('transform') ?? '';
     return transform.match(/translate\(([^,]+),([^\)]+)\)/)?.slice(1) ?? [];
