@@ -11,6 +11,11 @@ on:
           - patch
           - minor
           - major
+      publish_marketplace:
+        description: Publish the extension to the Visual Studio Marketplace
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -67,6 +72,7 @@ jobs:
           git push origin "v${VERSION}"
 
       - name: Publish to Visual Studio Marketplace
+        if: inputs.publish_marketplace
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
           VERSION: ${{ steps.version.outputs.version }}
