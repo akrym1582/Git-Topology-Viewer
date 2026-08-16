@@ -1,0 +1,69 @@
+name: Pull request tests
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare artifact directory
+        run: mkdir -p artifacts/ci
+
+      - name: Run typecheck
+        id: typecheck
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run typecheck 2>&1 | tee artifacts/ci/typecheck.log
+
+      - name: Run unit tests
+        id: unit_tests
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee artifacts/ci/unit-tests.log
+
+      - name: Install smoke-test browser
+        id: smoke_install
+        run: |
+          set -o pipefail
+          npm run smoke:install 2>&1 | tee artifacts/ci/smoke-install.log
+
+      - name: Run webview smoke test
+        id: smoke_test
+        continue-on-error: true
+        if: steps.smoke_install.outcome == 'success'
+        run: |
+          set -o pipefail
+          npm run smoke:webview 2>&1 | tee artifacts/ci/smoke-test.log
+
+      - name: Upload test and smoke-test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-test-results
+          path: |
+            artifacts/ci
+            artifacts/webview-smoke.png
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Fail if a check failed
+        if: steps.typecheck.outcome == 'failure' || steps.unit_tests.outcome == 'failure' || steps.smoke_test.outcome == 'failure'
+        run: exit 1
