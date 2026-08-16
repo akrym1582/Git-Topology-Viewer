@@ -74,9 +74,9 @@ try {
     throw new Error(`Unexpected checkout request: ${JSON.stringify(request)}`);
   }
 
-  // Interaction contract: compare intent is sent to VS Code, then its response renders.
   await page.locator('.ref.localBranch').first().click();
   await page.getByRole('heading', { name: 'main' }).waitFor();
+  // Interaction contract: compare intent is sent to VS Code, then its response renders.
   await page.locator('select').selectOption('refs/heads/develop');
   await page.getByRole('button', { name: 'Compare refs' }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
