@@ -17,7 +17,18 @@ export class BranchOperationService {
     return this.execute(['switch', '--track', '-c', localBranch, '--', remoteBranch]);
   }
   async push(branch: string, remote?: string, setUpstream = false): Promise<GitCommandResult> {
-    return this.execute(setUpstream && remote ? ['push', '-u', remote, branch] : ['push']);
+    if (setUpstream && remote) return this.execute(['push', '-u', remote, branch]);
+
+    const pushRemote = remote ?? (await this.git.run([
+      'for-each-ref',
+      '--format=%(upstream:remotename)',
+      '--',
+      `refs/heads/${branch}`,
+    ])).trim();
+    if (!pushRemote) {
+      return { success: false, stderr: `Branch ${branch} has no upstream remote.`, errorType: 'unknown' };
+    }
+    return this.execute(['push', pushRemote, branch]);
   }
   async pull(branch: string): Promise<GitCommandResult> {
     if (branch !== await this.currentBranch()) return { success: false, stderr: 'Pull is available only for the current branch.', errorType: 'unknown' };

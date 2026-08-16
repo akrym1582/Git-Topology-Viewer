@@ -30,4 +30,19 @@ describe('BranchOperationService', () => {
     const run = vi.fn().mockRejectedValue(new GitError('raw command failed', 'error: local changes would be overwritten\n'));
     await expect(serviceWith(run).switchTo('topic')).resolves.toMatchObject({ success: false, errorType: 'dirtyWorkingTree' });
   });
+
+  it('pushes the selected branch to its upstream remote', async () => {
+    const run = vi.fn().mockResolvedValueOnce('origin\n').mockResolvedValueOnce('');
+    const service = serviceWith(run);
+
+    await expect(service.push('topic')).resolves.toMatchObject({ success: true });
+
+    expect(run).toHaveBeenNthCalledWith(1, [
+      'for-each-ref',
+      '--format=%(upstream:remotename)',
+      '--',
+      'refs/heads/topic',
+    ]);
+    expect(run).toHaveBeenNthCalledWith(2, ['push', 'origin', 'topic']);
+  });
 });
