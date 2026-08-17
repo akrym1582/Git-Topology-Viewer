@@ -72,4 +72,10 @@ jobs:
 
       - name: Fail if a check failed
         if: steps.typecheck.outcome == 'failure' || steps.unit_tests.outcome == 'failure' || steps.smoke_test.outcome == 'failure'
-        run: exit 1
+        env:
+          TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
+          UNIT_TESTS_OUTCOME: ${{ steps.unit_tests.outcome }}
+          SMOKE_TEST_OUTCOME: ${{ steps.smoke_test.outcome }}
+        run: |
+          echo "::error::Checks failed: typecheck=${TYPECHECK_OUTCOME}, unit_tests=${UNIT_TESTS_OUTCOME}, smoke_test=${SMOKE_TEST_OUTCOME}"
+          exit 1
