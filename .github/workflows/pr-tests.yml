@@ -54,6 +54,10 @@ jobs:
           set -o pipefail
           npm run smoke:webview 2>&1 | tee artifacts/ci/smoke-test.log
 
+      - name: Copy smoke-test screenshot to documentation images
+        if: steps.smoke_test.outcome == 'success'
+        run: cp artifacts/webview-smoke.png docs/images/webview-smoke.png
+
       - name: Upload test and smoke-test artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -62,6 +66,7 @@ jobs:
           path: |
             artifacts/ci
             artifacts/webview-smoke.png
+            docs/images/webview-smoke.png
           if-no-files-found: warn
           retention-days: 14
 
