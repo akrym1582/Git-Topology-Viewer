@@ -1,7 +1,7 @@
 {
   "name": "git-topology-viewer",
-  "displayName": "Git Topology Viewer",
-  "description": "Understand branches, tags, divergence and merges without wading through every commit.",
+  "displayName": "%displayName%",
+  "description": "%description%",
   "version": "0.3.1",
   "publisher": "git-topology",
   "repository": {
@@ -20,28 +20,29 @@
     "onCommand:gitTopology.open"
   ],
   "main": "./dist/extension.js",
+  "l10n": "./l10n",
   "contributes": {
     "commands": [
       {
         "command": "gitTopology.open",
-        "title": "Git Topology: Open Viewer",
-        "category": "Git Topology",
+        "title": "%command.open%",
+        "category": "%configuration.title%",
         "icon": "$(graph)"
       }
     ],
     "configuration": {
-      "title": "Git Topology",
+      "title": "%configuration.title%",
       "properties": {
         "gitTopology.gitPath": {
           "type": "string",
           "default": "",
-          "description": "Path to the Git executable. Leave empty to use VS Code's Git path or PATH."
+          "description": "%configuration.gitPath.description%"
         },
         "gitTopology.maxCommits": {
           "type": "number",
           "default": 10000,
           "minimum": 100,
-          "description": "Maximum commits loaded into the in-memory DAG."
+          "description": "%configuration.maxCommits.description%"
         }
       }
     }

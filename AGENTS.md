@@ -59,6 +59,19 @@ from `domain` to an integration layer. Keep extension/webview messages serializa
 - Surface actionable Git failures to the user without leaking raw command details
   unless they help diagnose the problem.
 
+## Localization
+
+- English is the default UI language and Japanese (`ja`) is supported. When adding
+  or changing user-visible text, update both languages in the same change.
+- Put extension manifest strings in `package.nls.json` and
+  `package.nls.ja.json`. Put extension-host strings in `l10n/bundle.l10n.json`
+  and `l10n/bundle.l10n.ja.json`, accessed through `vscode.l10n.t()`.
+- Put Webview text in `src/webview/i18n.ts`; select it from the document language.
+  Do not introduce hard-coded user-visible text in React components.
+- Preserve interpolation placeholders and accessibile labels in every locale. Add
+  or update a localization-focused test and inspect the Japanese Webview smoke
+  screenshot whenever visible Webview text changes.
+
 ## Required checks
 
 Run `pwsh -NoProfile -File .agents/skills/git-topology-development/scripts/validate.ps1`. If a command

@@ -39,32 +39,32 @@ try {
   await mkdir(imageDir, { recursive: true });
   await page.screenshot({ path: join(imageDir, 'smoke-main-screen.png'), fullPage: true });
   if (await page.getByText('Local branches', { exact: true }).count()) throw new Error('Local branches should always be visible, without a filter control');
-  await page.getByRole('button', { name: 'Hide details' }).click();
+  await page.getByRole('button', { name: '詳細を隠す' }).click();
   if (await page.locator('aside').count()) throw new Error('Expected the details pane to be hidden');
   await page.screenshot({ path: join(imageDir, 'smoke-inspector-hidden.png'), fullPage: true });
-  await page.getByRole('button', { name: 'Show details' }).click();
+  await page.getByRole('button', { name: '詳細を表示' }).click();
   await page.locator('aside').waitFor();
 
   // Rendering: toolbar, refs, collapsed ranges, and vertical/horizontal SVG edges.
   if (await page.locator('.node').count() !== 6) throw new Error('Expected six commit nodes');
   if (await page.locator('.range').count() !== 2) throw new Error('Expected two collapsed ranges');
   if (await page.locator('.sha, .ref-sha').count() !== 0) throw new Error('Commit IDs should be hidden by default');
-  await page.getByText('Commit IDs', { exact: true }).click();
+  await page.getByText('コミット ID', { exact: true }).click();
   if (await page.locator('.ref-sha').count() !== 4) throw new Error('Expected a latest commit ID below every visible ref');
   if (await page.locator('.sha').count() !== 0) throw new Error('Collapsed commits should not expose commit IDs');
-  await page.getByRole('button', { name: 'Expand 12 commits' }).click();
+  await page.getByRole('button', { name: '12 件のコミットを展開' }).click();
   await page.locator('[data-commit="e93b2101234567890"] .sha').waitFor();
   let request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'expandRange' || request.rangeId !== 'range:main') {
     throw new Error(`Unexpected expand range request: ${JSON.stringify(request)}`);
   }
-  await page.getByRole('button', { name: 'Collapse 12 commits' }).click();
+  await page.getByRole('button', { name: '12 件のコミットを折りたたむ' }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'expandRange' || request.rangeId !== 'range:main') {
     throw new Error(`Unexpected collapse range request: ${JSON.stringify(request)}`);
   }
-  await page.getByRole('button', { name: 'Expand 12 commits' }).waitFor();
-  await page.getByText('Remote branches').click();
+  await page.getByRole('button', { name: '12 件のコミットを展開' }).waitFor();
+  await page.getByText('リモートブランチ').click();
   await page.locator('.ref.remoteBranch').first().waitFor();
   const remoteLabels = await page.locator('.ref.remoteBranch').evaluateAll(elements => elements.map(element => {
     const transform = element.getAttribute('transform') ?? '';
@@ -79,10 +79,10 @@ try {
     return refX + iconX;
   });
   if (refAlignment !== 0) throw new Error(`Expected the graph line to cross the ref icon center, got ${refAlignment}`);
-  const releaseRef = page.getByRole('button', { name: 'origin/release branch' });
+  const releaseRef = page.getByRole('button', { name: 'origin/release ブランチ' });
   if (!(await releaseRef.textContent())?.includes('origin/release')) throw new Error('Expected the origin/release label not to be truncated');
   const releaseConnector = await page.locator('[data-ref-connector="refs/remotes/origin/release"]').evaluate(element => {
-    const ref = document.querySelector('[aria-label="origin/release branch"]');
+    const ref = document.querySelector('[aria-label="origin/release ブランチ"]');
     const position = (ref?.getAttribute('transform') ?? '').match(/translate\(([^,]+),([^\)]+)\)/)?.slice(1).map(Number);
     const iconY = Number(ref?.querySelector('.ref-icon')?.getAttribute('y'));
     return { d: element.getAttribute('d'), expected: position ? `H ${position[0] + 14} V ${position[1] + iconY - 5}` : '' };
@@ -127,22 +127,22 @@ try {
     throw new Error(`Expected zoom controls at the lower right: ${JSON.stringify(zoomPosition)}`);
   }
   const initialWidth = Number(await page.locator('.canvas svg').getAttribute('width'));
-  await page.getByRole('button', { name: 'Zoom in' }).click();
-  await page.getByRole('button', { name: 'Reset zoom' }).getByText('110%').waitFor();
+  await page.getByRole('button', { name: '拡大' }).click();
+  await page.getByRole('button', { name: 'ズームをリセット' }).getByText('110%').waitFor();
   const zoomedWidth = Number(await page.locator('.canvas svg').getAttribute('width'));
   if (zoomedWidth <= initialWidth) throw new Error('Zoom in did not increase the graph canvas width');
-  await page.getByRole('button', { name: 'Reset zoom' }).click();
-  await page.getByRole('button', { name: 'Reset zoom' }).getByText('100%').waitFor();
+  await page.getByRole('button', { name: 'ズームをリセット' }).click();
+  await page.getByRole('button', { name: 'ズームをリセット' }).getByText('100%').waitFor();
   await page.screenshot({ path: join(imageDir, 'smoke-local-and-remote-branches.png'), fullPage: true });
 
   // Right-click requests host-curated exploration actions.
   await page.locator('.ref.localBranch').first().click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Show Merge Base' }).waitFor();
+  await page.getByRole('menuitem', { name: 'マージベースを表示' }).waitFor();
   await page.screenshot({ path: join(imageDir, 'smoke-context-menu.png'), fullPage: true });
-  if (!await page.getByRole('menuitem', { name: 'Checkout', exact: true }).isDisabled()) {
+  if (!await page.getByRole('menuitem', { name: 'チェックアウト', exact: true }).isDisabled()) {
     throw new Error('The current branch checkout action should be disabled');
   }
-  await page.getByRole('menuitem', { name: 'Select as Compare Base' }).click();
+  await page.getByRole('menuitem', { name: '比較ベースとして選択' }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'runContextCommand' || request.command !== 'selectCompareBase') {
     throw new Error(`Unexpected context command: ${JSON.stringify(request)}`);
@@ -157,15 +157,15 @@ try {
 
   // Mutating operations remain explicit extension-host intents.
   await page.locator('.ref.localBranch').nth(1).click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Compare Selected Refs', exact: true }).waitFor();
-  if (await page.getByRole('menuitem', { name: 'Checkout', exact: true }).count()) {
+  await page.getByRole('menuitem', { name: '選択した参照を比較', exact: true }).waitFor();
+  if (await page.getByRole('menuitem', { name: 'チェックアウト', exact: true }).count()) {
     throw new Error('Single-ref Git actions should be hidden for a two-ref context menu');
   }
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'contextMenu' || request.selectedRefs?.length !== 2) {
     throw new Error(`Unexpected pair context-menu request: ${JSON.stringify(request)}`);
   }
-  await page.getByRole('menuitem', { name: 'Compare Selected Refs', exact: true }).click();
+  await page.getByRole('menuitem', { name: '選択した参照を比較', exact: true }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'runContextCommand' || request.command !== 'compareSelected' || request.selectedRefs?.length !== 2) {
     throw new Error(`Unexpected pair comparison request: ${JSON.stringify(request)}`);
@@ -174,7 +174,7 @@ try {
   // Returning to one selected ref restores branch-specific actions.
   await page.locator('.ref.localBranch').nth(1).click();
   await page.locator('.ref.localBranch').nth(1).click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Checkout', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'チェックアウト', exact: true }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'runContextCommand' || request.command !== 'checkout' || request.selectedRefs?.length !== 1) {
     throw new Error(`Unexpected checkout request: ${JSON.stringify(request)}`);
@@ -187,8 +187,8 @@ try {
     throw new Error(`Unexpected ref history request: ${JSON.stringify(request)}`);
   }
   await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeRefLog })));
-  await page.getByRole('heading', { name: 'Commit history' }).waitFor();
-  await page.getByRole('button', { name: 'Show changes for f41acde1234567890' }).click();
+  await page.getByRole('heading', { name: 'コミット履歴' }).waitFor();
+  await page.getByRole('button', { name: 'f41acde1234567890 の変更を表示' }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'showCommitDetails' || request.commit !== 'f41acde1234567890') {
     throw new Error(`Unexpected commit details request: ${JSON.stringify(request)}`);
@@ -206,8 +206,8 @@ try {
   // Keep the two-ref comparison actions visible in the captured visual artifact.
   await page.locator('.ref.localBranch').nth(1).click({ modifiers: ['Control'] });
   await page.locator('.ref.localBranch').nth(1).click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Compare Selected Refs', exact: true }).waitFor();
-  if (await page.getByRole('menuitem', { name: 'Checkout', exact: true }).count()) {
+  await page.getByRole('menuitem', { name: '選択した参照を比較', exact: true }).waitFor();
+  if (await page.getByRole('menuitem', { name: 'チェックアウト', exact: true }).count()) {
     throw new Error('The visual comparison context menu should not show Checkout');
   }
   await page.screenshot({ path: join(imageDir, 'smoke-branch-comparison-context-menu.png'), fullPage: true });
