@@ -2,7 +2,7 @@ import React, { MouseEvent, useEffect, useMemo, useState } from 'react';
 import { BranchComparison, CommitDetails, CommitViewGraph, GitRef, GraphPayload, RefLog, RefViewGraph } from '../domain/models';
 import { GraphContextMenuItem } from '../vscode/messages';
 import { WebviewStrings, webviewStrings } from './i18n';
-import { orderIncomingRelationEdges, relationEdgePath } from './relationEdgeRouting';
+import { relationEdgePath } from './relationEdgeRouting';
 import { vscode } from './vscode';
 
 interface ContextMenuState { ref: GitRef; selectedRefs: string[]; x: number; y: number; items: GraphContextMenuItem[] }
@@ -108,24 +108,14 @@ function Graph({ graph, mode, data, ui, selected, onSelect, onContextMenu }: { g
   const [zoom, setZoom] = useState(1);
   const refLayouts = new Map(graph.nodes.map(node => [node.id, layoutRefs(node.refs)]));
   const nodes = new Map(graph.nodes.map(node => [node.id, node]));
-  const incomingRelationEdges = new Map<string, typeof graph.edges>();
-  if (mode === 'relations') for (const edge of graph.edges) {
-    const incoming = incomingRelationEdges.get(edge.to) ?? [];
-    incoming.push(edge);
-    incomingRelationEdges.set(edge.to, incoming);
-  }
-  if (mode === 'relations') {
-    const sourcePositions = new Map(graph.nodes.map(node => [node.id, { x: node.x, y: node.y }]));
-    for (const [target, incoming] of incomingRelationEdges) incomingRelationEdges.set(target, orderIncomingRelationEdges(incoming, sourcePositions));
-  }
   const maxX = Math.max(800, ...graph.nodes.map(node => node.x + 300));
   const maxY = Math.max(600, ...graph.nodes.map(node => node.y + 100));
   const updateZoom = (next: number) => setZoom(Math.min(2, Math.max(0.5, Math.round(next * 10) / 10)));
   return <section className="canvas" onWheel={event => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); updateZoom(zoom + (event.deltaY < 0 ? 0.1 : -0.1)); } }}>
     <div className="zoom-controls" aria-label={ui.zoomControls}><button aria-label={ui.zoomOut} title={ui.zoomOut} disabled={zoom <= 0.5} onClick={() => updateZoom(zoom - 0.1)}>−</button><button aria-label={ui.resetZoom} title={ui.resetZoom} onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button><button aria-label={ui.zoomIn} title={ui.zoomIn} disabled={zoom >= 2} onClick={() => updateZoom(zoom + 0.1)}>＋</button></div>
-    <svg width={maxX * zoom} height={maxY * zoom}><g transform={`scale(${zoom})`}><g className={`edges ${mode === 'commits' ? 'commit-edges' : ''}`}>{graph.edges.map(edge => { const from = nodes.get(edge.from); const to = nodes.get(edge.to); if (!from || !to) return null; if (mode === 'relations') { const fromLayout = refLayouts.get(from.id)!; const toLayout = refLayouts.get(to.id)!; const incoming = incomingRelationEdges.get(to.id)!; const incomingIndex = incoming.indexOf(edge); const fromPoint = { x: from.x + REF_WIDTH / 2 - REF_ICON_CENTER_X, y: from.y + fromLayout.top + REF_HEIGHT };
+    <svg width={maxX * zoom} height={maxY * zoom}><g transform={`scale(${zoom})`}><g className={`edges ${mode === 'commits' ? 'commit-edges' : ''}`}>{graph.edges.map(edge => { const from = nodes.get(edge.from); const to = nodes.get(edge.to); if (!from || !to) return null; if (mode === 'relations') { const fromLayout = refLayouts.get(from.id)!; const toLayout = refLayouts.get(to.id)!; const fromPoint = { x: from.x + REF_WIDTH / 2 - REF_ICON_CENTER_X, y: from.y + fromLayout.top + REF_HEIGHT };
       const toPoint = { x: to.x + REF_WIDTH / 2 - REF_ICON_CENTER_X, y: to.y + toLayout.top };
-      return <path key={`${edge.from}:${edge.to}`} d={relationEdgePath(fromPoint, toPoint, incomingIndex, incoming.length)}/>;
+      return <path key={`${edge.from}:${edge.to}`} d={relationEdgePath(fromPoint, toPoint)}/>;
     }
     const fromX = from.x; const fromY = from.y; const toX = to.x; const toY = to.y;
     return <path key={`${edge.from}:${edge.to}`} d={`M ${fromX} ${fromY} C ${fromX} ${(fromY + toY) / 2}, ${toX} ${(fromY + toY) / 2}, ${toX} ${toY}`}/>; })}</g>{graph.nodes.map(node => { const layout = refLayouts.get(node.id)!; if (mode === 'commits') return <CommitNode key={node.id} node={node} data={data} ui={ui} selected={selected} onSelect={onSelect} onContextMenu={onContextMenu}/>; return <g key={node.id} data-ref-node={node.id} className="node" transform={`translate(${node.x},${node.y})`}>{layout.refs.length > 1 && <g className="ref-connectors" aria-hidden="true">{layout.refs.slice(1).map(({ ref, position }) => <path key={ref.fullName} data-ref-connector={ref.fullName} d={`M ${layout.anchor.x} ${layout.anchor.y} V ${position.y - REF_ROW_GAP / 2} H ${position.x + REF_ICON_CENTER_X} V ${position.y + REF_ANCHOR_Y}`}/>)}</g>}{layout.refs.map(({ ref, position }) => <RefNode key={ref.fullName} gitRef={ref} position={position} data={data} ui={ui} selected={selected} onSelect={onSelect} onContextMenu={onContextMenu}/>)}</g>; })}</g></svg><div className="selection-hint">{ui.selectionHint}</div></section>;

@@ -1,24 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { orderIncomingRelationEdges, relationEdgePath } from '../src/webview/relationEdgeRouting';
+import { relationEdgePath } from '../src/webview/relationEdgeRouting';
 
 describe('relationEdgePath', () => {
-  it('uses separate target ports for relations that converge on one ref group', () => {
-    const first = relationEdgePath({ x: 321, y: 224 }, { x: 131, y: 436 }, 0, 2);
-    const second = relationEdgePath({ x: 321, y: 344 }, { x: 131, y: 436 }, 1, 2);
+  it('converges relations at the same target port', () => {
+    const first = relationEdgePath({ x: 321, y: 224 }, { x: 131, y: 436 });
+    const second = relationEdgePath({ x: 321, y: 344 }, { x: 131, y: 436 });
 
-    expect(first).toContain('111 436');
-    expect(second).toContain('151 436');
+    expect(first).toBe('M 321 224 L 321 364 C 321 400, 131 400, 131 436');
+    expect(second).toBe('M 321 344 L 321 390 C 321 413, 131 413, 131 436');
     expect(first).not.toBe(second);
   });
 
-  it('keeps a single relation centred on its target group', () => {
-    expect(relationEdgePath({ x: 61, y: 118 }, { x: 251, y: 210 }, 0, 1)).toContain('251 210');
+  it('keeps a long relation in its source lane until the target approach', () => {
+    expect(relationEdgePath({ x: 131, y: 104 }, { x: 511, y: 316 }))
+      .toBe('M 131 104 L 131 244 C 131 280, 511 280, 511 316');
   });
 
-  it('orders target ports to match the horizontal order of their sources', () => {
-    const edges = [{ from: 'right' }, { from: 'left' }];
-    const sources = new Map([['left', { x: 70, y: 90 }], ['right', { x: 260, y: 210 }]]);
-
-    expect(orderIncomingRelationEdges(edges, sources).map(edge => edge.from)).toEqual(['left', 'right']);
+  it('keeps a single relation centred on its target group', () => {
+    expect(relationEdgePath({ x: 61, y: 118 }, { x: 251, y: 210 })).toContain('251 210');
   });
 });

@@ -77,7 +77,7 @@ try {
   await page.getByText('src/AuthService.ts').waitFor();
   await page.screenshot({ path: join(imageDir, 'smoke-branch-log.png'), fullPage: true });
 
-  await page.locator('.ref.localBranch').nth(1).click();
+  await page.getByRole('button', { name: 'feature/login ブランチ' }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'showRefLog' || request.ref !== 'refs/heads/feature/login') throw new Error(`Unexpected feature history request: ${JSON.stringify(request)}`);
   await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeFeatureLog })));
@@ -100,7 +100,7 @@ try {
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'runContextCommand' || request.command !== 'selectCompareBase') throw new Error(`Unexpected context command: ${JSON.stringify(request)}`);
 
-  await page.locator('.ref.localBranch').nth(2).click({ modifiers: ['Control'] });
+  await page.getByRole('button', { name: 'develop ブランチ' }).click({ modifiers: ['Control'] });
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'compareRefs' || request.left !== 'refs/heads/main' || request.right !== 'refs/heads/develop') throw new Error(`Unexpected Ctrl-click comparison: ${JSON.stringify(request)}`);
   await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeComparison })));
