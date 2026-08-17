@@ -11,7 +11,8 @@ function startServer() { const server = createServer(async (request, response) =
 
 const server = await startServer();
 const address = server.address();
-const browser = await chromium.launch({ headless: true });
+const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+const browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 page.setDefaultTimeout(5_000);
 const pageErrors = [];

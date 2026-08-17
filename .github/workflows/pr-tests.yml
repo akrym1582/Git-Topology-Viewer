@@ -40,11 +40,17 @@ jobs:
           set -o pipefail
           npm test 2>&1 | tee artifacts/ci/unit-tests.log
 
-      - name: Install smoke-test browser
+      - name: Prepare smoke-test browser
         id: smoke_install
         run: |
           set -o pipefail
-          npm run smoke:install 2>&1 | tee artifacts/ci/smoke-install.log
+          chrome_path="$(command -v google-chrome || command -v google-chrome-stable || true)"
+          if [[ -n "$chrome_path" ]]; then
+            echo "Using preinstalled Chrome: $chrome_path" | tee artifacts/ci/smoke-install.log
+            echo "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=$chrome_path" >> "$GITHUB_ENV"
+          else
+            npm run smoke:install 2>&1 | tee artifacts/ci/smoke-install.log
+          fi
 
       - name: Run webview smoke test
         id: smoke_test
