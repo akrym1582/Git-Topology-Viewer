@@ -5,53 +5,57 @@ const ROW_HEIGHT = 110;
 
 export class TopologyBuilder {
   build(graph: CommitGraph, mode: ViewMode, expanded = new Set<string>()): ViewGraph {
-    const children = new Map<string, number>();
-    graph.nodes.forEach(n => n.parents.forEach(p => children.set(p, (children.get(p) ?? 0) + 1)));
-    const significant = new Set(graph.order.filter(id => { const n = graph.nodes.get(id)!; return n.refs.length > 0 || n.parents.length !== 1 || n.parents.some(parent => !graph.nodes.has(parent)) || (children.get(id) ?? 0) !== 1; }));
+    const significant = new Set(graph.order.filter(id => this.isAnchor(graph, id)));
     if (mode === 'compact') graph.order.forEach(id => { const n = graph.nodes.get(id)!; if (n.message) significant.add(id); });
     if (mode === 'full') graph.order.forEach(id => significant.add(id));
-    const visible = new Set(significant); const ranges: CollapsedCommitRange[] = [];
-    for (const from of graph.order) {
-      if (!significant.has(from)) continue;
-      for (const parent of graph.nodes.get(from)!.parents) {
-        const hidden: string[] = []; let cursor = parent;
-        while (graph.nodes.has(cursor) && !significant.has(cursor)) { hidden.push(cursor); const ps = graph.nodes.get(cursor)!.parents; if (ps.length !== 1) break; cursor = ps[0]; }
-        if (hidden.length) {
-          const id = `range:${from}:${cursor}:${hidden[0]}`; const range = { id, fromCommit: from, toCommit: cursor, commits: hidden, count: hidden.length, expanded: expanded.has(id) };
-          ranges.push(range); if (range.expanded) hidden.forEach(x => visible.add(x));
-        }
-      }
-    }
+    const ranges = this.buildRanges(graph, significant, expanded);
+    const visible = new Set(significant);
+    ranges.filter(range => range.expanded).forEach(range => range.commits.forEach(id => visible.add(id)));
     const ordered = graph.order.filter(id => visible.has(id));
     const lanes = this.assignLanes(graph, ordered, visible);
     const nodes: ViewNode[] = ordered.map((id, row) => ({ id, kind: 'commit', commit: graph.nodes.get(id), lane: lanes.get(id)!, row, x: 70 + lanes.get(id)! * 150, y: TOP_PADDING + row * ROW_HEIGHT }));
-    const usedRangeLanes = new Map<string, Set<number>>();
     for (const range of ranges) {
-      const fromIndex = ordered.indexOf(range.fromCommit); const toIndex = ordered.indexOf(range.toCommit);
-      if (fromIndex < 0 || toIndex < 0) continue;
-      const row = (fromIndex + toIndex) / 2;
-      const parents = graph.nodes.get(range.fromCommit)?.parents ?? [];
-      const parentIndex = parents.indexOf(range.commits[0]);
+      const fromIndex = ordered.indexOf(range.fromCommit);
+      const toIndices = range.toCommits.map(id => ordered.indexOf(id)).filter(index => index >= 0);
+      if (fromIndex < 0 || !toIndices.length) continue;
+      const row = (fromIndex + Math.max(...toIndices)) / 2;
       const fromLane = lanes.get(range.fromCommit) ?? 0;
-      const toLane = lanes.get(range.toCommit) ?? fromLane;
-      const used = usedRangeLanes.get(range.fromCommit) ?? new Set([fromLane]);
-      let lane = parentIndex <= 0 ? fromLane : toLane;
-      if (parentIndex > 0 && used.has(lane)) {
-        lane = fromLane + 1;
-        while (used.has(lane)) lane++;
-      }
-      used.add(lane);
-      usedRangeLanes.set(range.fromCommit, used);
-      nodes.push({ id: range.id, kind: 'range', range, lane, row, x: 70 + lane * 150, y: TOP_PADDING + row * ROW_HEIGHT });
+      nodes.push({ id: range.id, kind: 'range', range, lane: fromLane, row, x: 70 + fromLane * 150, y: TOP_PADDING + row * ROW_HEIGHT });
     }
     const visibleOrdered = [...nodes].filter(n => n.kind === 'commit').sort((a,b) => a.row-b.row);
     const edges = [] as ViewGraph['edges'];
-    for (const node of visibleOrdered) for (const parent of node.commit!.parents) {
-      let cursor = parent, hidden = 0;
-      while (graph.nodes.has(cursor) && !visible.has(cursor)) { hidden++; const ps = graph.nodes.get(cursor)!.parents; if (ps.length !== 1) break; cursor = ps[0]; }
-      if (visible.has(cursor)) edges.push({ from: node.id, to: cursor, hiddenCommitCount: hidden });
+    for (const node of visibleOrdered) {
+      for (const [to, hidden] of this.visibleAncestors(graph, node.commit!.parents, visible)) {
+        edges.push({ from: node.id, to, hiddenCommitCount: hidden.size });
+      }
     }
     return { nodes, edges };
+  }
+  private isAnchor(graph: CommitGraph, id: string): boolean {
+    const node = graph.nodes.get(id)!;
+    return node.refs.length > 0 || node.parents.length === 0 || node.parents.some(parent => !graph.nodes.has(parent));
+  }
+  private buildRanges(graph: CommitGraph, significant: Set<string>, expanded: Set<string>): CollapsedCommitRange[] {
+    return graph.order.flatMap(from => {
+      if (!significant.has(from)) return [];
+      const region = this.hiddenRegion(graph, graph.nodes.get(from)!.parents, significant);
+      if (!region.commits.size || !region.targets.size) return [];
+      const commits = graph.order.filter(id => region.commits.has(id));
+      const toCommits = graph.order.filter(id => region.targets.has(id));
+      const id = `range:${from}:${toCommits.join(',')}`;
+      return [{ id, fromCommit: from, toCommits, commits, count: commits.length, expanded: expanded.has(id) }];
+    });
+  }
+  private hiddenRegion(graph: CommitGraph, starts: string[], anchors: Set<string>): { commits: Set<string>; targets: Set<string> } {
+    const commits = new Set<string>(), targets = new Set<string>(), pending = [...starts];
+    while (pending.length) {
+      const id = pending.pop()!;
+      if (anchors.has(id)) { targets.add(id); continue; }
+      if (!graph.nodes.has(id) || commits.has(id)) continue;
+      commits.add(id);
+      pending.push(...graph.nodes.get(id)!.parents);
+    }
+    return { commits, targets };
   }
   private assignLanes(graph: CommitGraph, order: string[], visible: Set<string>): Map<string, number> {
     const result = new Map<string, number>(), active: string[] = [];
@@ -62,20 +66,26 @@ export class TopologyBuilder {
         if (i !== lane && active[i] === id) active[i] = '';
       }
       const parents = (graph.nodes.get(id)?.parents ?? [])
-        .map(parent => this.nextVisibleAncestor(graph, parent, visible))
-        .filter((parent): parent is string => parent !== undefined);
+        .flatMap(parent => [...this.visibleAncestors(graph, [parent], visible).keys()])
+        .filter((parent, index, values) => values.indexOf(parent) === index);
       active[lane] = parents[0] ?? '';
       for (let i = 1; i < parents.length; i++) { let pLane = active.indexOf(parents[i]); if (pLane < 0) { pLane = active.findIndex(x => !x); if (pLane < 0) pLane = active.length; active[pLane] = parents[i]; } }
     }
     return result;
   }
-  private nextVisibleAncestor(graph: CommitGraph, start: string, visible: Set<string>): string | undefined {
-    let cursor = start;
-    while (graph.nodes.has(cursor) && !visible.has(cursor)) {
-      const parents = graph.nodes.get(cursor)!.parents;
-      if (parents.length !== 1) return undefined;
-      cursor = parents[0];
+  private visibleAncestors(graph: CommitGraph, starts: string[], visible: Set<string>): Map<string, Set<string>> {
+    const targets = new Set<string>(), hidden = new Set<string>(), pending = [...starts];
+    while (pending.length) {
+      const id = pending.pop()!;
+      if (visible.has(id)) {
+        targets.add(id);
+        continue;
+      }
+      const node = graph.nodes.get(id);
+      if (!node || hidden.has(id)) continue;
+      hidden.add(id);
+      pending.push(...node.parents);
     }
-    return visible.has(cursor) ? cursor : undefined;
+    return new Map([...targets].map(target => [target, hidden]));
   }
 }

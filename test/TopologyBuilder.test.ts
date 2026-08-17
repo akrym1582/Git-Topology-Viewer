@@ -18,7 +18,7 @@ describe('TopologyBuilder',()=>{
     expect(view.nodes.find(node => node.id === 'd')?.kind).toBe('commit');
     expect(view.edges).toContainEqual({ from: 'a', to: 'd', hiddenCommitCount: 2 });
   });
-  it('gives parallel collapsed merge paths distinct identities and lanes',()=>{
+  it('collapses an unreferenced merged branch into one ref-to-ref range',()=>{
     const nodes = new Map();
     nodes.set('merge',{id:'merge',parents:['left-1','right-1'],refs:[{name:'main',fullName:'refs/heads/main',type:'localBranch',commitId:'merge'}]});
     nodes.set('left-1',{id:'left-1',parents:['base'],refs:[]});
@@ -26,11 +26,9 @@ describe('TopologyBuilder',()=>{
     nodes.set('base',{id:'base',parents:[],refs:[]});
     const view = new TopologyBuilder().build({nodes,order:['merge','left-1','right-1','base']},'topology');
     const ranges = view.nodes.filter(node => node.kind === 'range');
-    expect(ranges.map(node => node.id)).toEqual([
-      'range:merge:base:left-1',
-      'range:merge:base:right-1'
-    ]);
-    expect(new Set(ranges.map(node => node.lane)).size).toBe(2);
+    expect(ranges.map(node => node.id)).toEqual(['range:merge:base']);
+    expect(ranges[0].range?.commits).toEqual(['left-1','right-1']);
+    expect(view.edges).toEqual([{ from: 'merge', to: 'base', hiddenCommitCount: 2 }]);
   });
   it('does not drift right after consecutive collapsed histories',()=>{
     const nodes = new Map();
@@ -48,7 +46,7 @@ describe('TopologyBuilder',()=>{
     expect(commits.map(node => node.lane)).toEqual([0, 0, 0, 0]);
     expect(ranges.map(node => node.lane)).toEqual([0, 0]);
   });
-  it('reuses side lanes after consecutive merges converge',()=>{
+  it('hides unreferenced merge topology while full mode retains every lane',()=>{
     const nodes = new Map();
     nodes.set('merge-2',{id:'merge-2',parents:['main-2','side-2'],refs:[{name:'main',fullName:'refs/heads/main',type:'localBranch',commitId:'merge-2'}]});
     nodes.set('main-2',{id:'main-2',parents:['merge-1'],refs:[]});
@@ -62,7 +60,37 @@ describe('TopologyBuilder',()=>{
     const topology = new TopologyBuilder().build(graph,'topology');
     const full = new TopologyBuilder().build(graph,'full');
 
-    expect(topology.nodes.filter(node=>node.kind==='range').map(node=>node.lane)).toEqual([0,1,0,1]);
+    expect(topology.nodes.filter(node=>node.kind==='range').map(node=>node.range?.count)).toEqual([5]);
+    expect(topology.edges).toEqual([{ from: 'merge-2', to: 'base', hiddenCommitCount: 5 }]);
     expect(Math.max(...full.nodes.filter(node=>node.kind==='commit').map(node=>node.lane))).toBe(1);
+  });
+  it('keeps a current branch visible when an unreferenced branch joins it',()=>{
+    const nodes = new Map();
+    nodes.set('main',{id:'main',parents:['merge'],refs:[{name:'main',fullName:'refs/heads/main',type:'localBranch',commitId:'main'}]});
+    nodes.set('merge',{id:'merge',parents:['main-before','deleted-topic'],refs:[]});
+    nodes.set('deleted-topic',{id:'deleted-topic',parents:['base'],refs:[]});
+    nodes.set('main-before',{id:'main-before',parents:['base'],refs:[]});
+    nodes.set('feature',{id:'feature',parents:['base'],refs:[{name:'feature',fullName:'refs/heads/feature',type:'localBranch',commitId:'feature'}]});
+    nodes.set('base',{id:'base',parents:[],refs:[]});
+
+    const view = new TopologyBuilder().build({nodes,order:['main','merge','deleted-topic','main-before','feature','base']},'topology');
+
+    expect(view.nodes.filter(node => node.kind === 'commit').map(node => node.id)).toEqual(['main','feature','base']);
+    expect(view.nodes.find(node => node.kind === 'range')?.range?.commits).toEqual(['merge','deleted-topic','main-before']);
+    expect(view.edges).toContainEqual({ from: 'main', to: 'base', hiddenCommitCount: 3 });
+    expect(view.edges).toContainEqual({ from: 'feature', to: 'base', hiddenCommitCount: 0 });
+  });
+  it('does not collapse a branch that still has a ref',()=>{
+    const nodes = new Map();
+    nodes.set('main',{id:'main',parents:['merge'],refs:[{name:'main',fullName:'refs/heads/main',type:'localBranch',commitId:'main'}]});
+    nodes.set('merge',{id:'merge',parents:['main-before','topic'],refs:[]});
+    nodes.set('topic',{id:'topic',parents:['base'],refs:[{name:'topic',fullName:'refs/heads/topic',type:'localBranch',commitId:'topic'}]});
+    nodes.set('main-before',{id:'main-before',parents:['base'],refs:[]});
+    nodes.set('base',{id:'base',parents:[],refs:[]});
+
+    const view = new TopologyBuilder().build({nodes,order:['main','merge','topic','main-before','base']},'topology');
+
+    expect(view.nodes.filter(node => node.kind === 'commit').map(node => node.id)).toEqual(['main','topic','base']);
+    expect(view.edges).toContainEqual({ from: 'main', to: 'topic', hiddenCommitCount: 2 });
   });
 });
