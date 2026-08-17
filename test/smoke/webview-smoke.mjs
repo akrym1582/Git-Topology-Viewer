@@ -57,6 +57,10 @@ try {
   await page.getByText('リモートブランチ').click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'setRefVisibility' || request.tags !== true || request.remotes !== true) throw new Error(`Unexpected ref visibility request: ${JSON.stringify(request)}`);
+  await page.waitForFunction(() => {
+    const transforms = [...document.querySelectorAll('.ref.remoteBranch')].map(element => element.getAttribute('transform'));
+    return transforms.length === 2 && transforms[0] !== transforms[1];
+  });
   const remoteLabels = await page.locator('.ref.remoteBranch').evaluateAll(elements => elements.map(element => element.getAttribute('transform')));
   if (remoteLabels.length !== 2 || remoteLabels[0] === remoteLabels[1]) throw new Error(`Expected stacked remote refs: ${JSON.stringify(remoteLabels)}`);
 
