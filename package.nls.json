@@ -1,0 +1,8 @@
+{
+  "displayName": "Git Topology Viewer",
+  "description": "Understand branches, tags, divergence and merges without wading through every commit.",
+  "command.open": "Git Topology: Open Viewer",
+  "configuration.title": "Git Topology",
+  "configuration.gitPath.description": "Path to the Git executable. Leave empty to use VS Code's Git path or PATH.",
+  "configuration.maxCommits.description": "Maximum commits loaded into the in-memory DAG."
+}

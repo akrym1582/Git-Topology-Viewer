@@ -1,0 +1,14 @@
+import { describe, expect, it } from 'vitest';
+import { webviewStrings } from '../src/webview/i18n';
+
+describe('webview localization', () => {
+  it('uses Japanese strings for Japanese display language variants', () => {
+    const strings = webviewStrings('ja-JP');
+    expect(strings.refresh).toBe('更新');
+    expect(strings.expandCommits(2)).toBe('2 件のコミットを展開');
+  });
+
+  it('falls back to English for unsupported display languages', () => {
+    expect(webviewStrings('fr').refresh).toBe('Refresh');
+  });
+});

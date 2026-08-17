@@ -149,21 +149,21 @@ setInterval(() => {
   const isPair = request.selectedRefs?.length === 2;
   const item = (command, label, group, enabled = true) => ({ command, label, group, enabled, visible: true });
   const items = isPair ? [
-    item('compareSelected', 'Compare Selected Refs', 'compare'),
-    item('compareSelectedSnapshots', 'Compare Current Snapshots', 'compare'),
-    item('showSelectedMergeBase', 'Show Merge Base', 'compare')
+    item('compareSelected', '選択した参照を比較', 'compare'),
+    item('compareSelectedSnapshots', '現在のスナップショットを比較', 'compare'),
+    item('showSelectedMergeBase', 'マージベースを表示', 'compare')
   ] : [
-    item('compareCurrent', 'Compare with Current Branch', 'compare', !isCurrent),
-    item('selectCompareBase', 'Select as Compare Base', 'compare'),
-    item('compareWith', 'Compare with…', 'compare'),
-    item('showMergeBase', 'Show Merge Base', 'compare', !isCurrent),
-    item('focus', 'Focus on This Branch', 'graph'),
-    item('related', 'Show Related Branches Only', 'graph'),
-    item('expandCommits', 'Expand Commits', 'graph'),
-    item('collapseCommits', 'Collapse Commits', 'graph'),
-    item('checkout', 'Checkout', 'git', !isCurrent),
-    item('createBranch', 'Create Branch from Here…', 'git'),
-    item('copyName', 'Copy Branch Name', 'copy'), item('copyHash', 'Copy Commit Hash', 'copy')
+    item('compareCurrent', '現在のブランチと比較', 'compare', !isCurrent),
+    item('selectCompareBase', '比較ベースとして選択', 'compare'),
+    item('compareWith', '比較対象を選択…', 'compare'),
+    item('showMergeBase', 'マージベースを表示', 'compare', !isCurrent),
+    item('focus', 'このブランチにフォーカス', 'graph'),
+    item('related', '関連するブランチのみ表示', 'graph'),
+    item('expandCommits', 'コミットを展開', 'graph'),
+    item('collapseCommits', 'コミットを折りたたむ', 'graph'),
+    item('checkout', 'チェックアウト', 'git', !isCurrent),
+    item('createBranch', 'ここからブランチを作成…', 'git'),
+    item('copyName', 'ブランチ名をコピー', 'copy'), item('copyHash', 'コミットハッシュをコピー', 'copy')
   ];
   window.dispatchEvent(new MessageEvent('message', { data: {
     type: 'contextMenuItems', nodeId: request.nodeId, selectedRefs: request.selectedRefs, x: request.x, y: request.y, items

@@ -1,0 +1,8 @@
+{
+  "displayName": "Git トポロジービューアー",
+  "description": "すべてのコミットをたどらずに、ブランチ、タグ、分岐、マージを把握できます。",
+  "command.open": "Git トポロジー: ビューアーを開く",
+  "configuration.title": "Git トポロジー",
+  "configuration.gitPath.description": "Git 実行ファイルへのパスです。空欄の場合は VS Code の Git パスまたは PATH を使用します。",
+  "configuration.maxCommits.description": "メモリ内の DAG に読み込むコミット数の上限です。"
+}

@@ -1,5 +1,7 @@
 # Git Topology Viewer
 
+[日本語版](README.ja.md)
+
 A VS Code extension for reading a repository's **commit DAG** at the level you need. Branches and tags remain labels on commits; the viewer never invents a branch-parent tree.
 
 ## Features
