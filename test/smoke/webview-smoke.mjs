@@ -5,7 +5,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 
 const root = resolve(import.meta.dirname, '../..');
 const screenshot = resolve(process.env.SMOKE_SCREENSHOT ?? join(root, 'artifacts/webview-smoke.png'));
-const imageDir = resolve(root, 'docs/images');
+const imageDir = resolve(process.env.SMOKE_IMAGE_DIR ?? join(root, 'docs/images'));
 const types = { '.css': 'text/css', '.html': 'text/html', '.js': 'text/javascript', '.map': 'application/json' };
 function startServer() { const server = createServer(async (request, response) => { try { const pathname = new URL(request.url ?? '/', 'http://localhost').pathname; const relative = pathname === '/' ? 'test/smoke/fixture.html' : pathname.slice(1); const file = normalize(join(root, relative)); if (!file.startsWith(`${root}${sep}`)) throw new Error('Path escapes fixture root'); response.setHeader('content-type', types[extname(file)] ?? 'application/octet-stream'); response.end(await readFile(file)); } catch { response.statusCode = 404; response.end('Not found'); } }); return new Promise(resolveServer => server.listen(0, '127.0.0.1', () => resolveServer(server))); }
 
@@ -120,6 +120,7 @@ try {
 
   await mkdir(resolve(screenshot, '..'), { recursive: true });
   await page.screenshot({ path: screenshot, fullPage: true });
+  await page.screenshot({ path: join(imageDir, 'webview-smoke.png'), fullPage: true });
   if (pageErrors.length) throw new Error(`Webview errors: ${pageErrors.join('; ')}`);
   console.log(`Webview smoke test passed. Screenshot: ${screenshot}`);
 } finally { await browser.close(); await new Promise(resolveClose => server.close(resolveClose)); }

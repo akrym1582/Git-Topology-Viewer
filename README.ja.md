@@ -36,10 +36,12 @@ npm run build
 
 ```powershell
 npm run smoke:install
-npm run smoke:webview
+npm run screenshots:refresh
 ```
 
-スクリーンショットは `artifacts/webview-smoke.png` に出力されます。環境、テストの自動検証、目視確認のチェックリスト、トラブルシューティングは `.agents/skills/git-topology-webview-smoke-test/` にあります。
+スモークテストの画像は `artifacts/webview-smoke.png` に、ドキュメント用の画像は
+`docs/images/` に再取得されます。同じ処理は GitHub Actions の手動実行
+**Refresh documentation images** からも実行できます。環境、テストの自動検証、目視確認のチェックリスト、トラブルシューティングは `.agents/skills/git-topology-webview-smoke-test/` にあります。
 
 ## 設計
 

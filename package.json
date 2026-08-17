@@ -52,7 +52,8 @@
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "smoke:webview": "npm run build && node test/smoke/webview-smoke.mjs",
+    "screenshots:refresh": "npm run build && node test/smoke/webview-smoke.mjs",
+    "smoke:webview": "npm run screenshots:refresh",
     "smoke:install": "playwright install chromium"
   },
   "devDependencies": {

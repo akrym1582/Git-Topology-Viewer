@@ -40,12 +40,14 @@ exercise ref comparison, and save a screenshot:
 
 ```powershell
 npm run smoke:install
-npm run smoke:webview
+npm run screenshots:refresh
 ```
 
-The screenshot is written to `artifacts/webview-smoke.png`. The complete environment,
-automated assertions, manual review checklist, and troubleshooting notes live in
-`.agents/skills/git-topology-webview-smoke-test/`.
+The smoke screenshot is written to `artifacts/webview-smoke.png`, and the documentation
+screenshots are refreshed in `docs/images/`. The same refresh can be run from the
+manual **Refresh documentation images** GitHub Actions workflow. The complete
+environment, automated assertions, manual review checklist, and troubleshooting notes
+live in `.agents/skills/git-topology-webview-smoke-test/`.
 
 ## Design
 
