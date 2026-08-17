@@ -34,6 +34,10 @@ try {
   if (await page.locator('.ref.remoteBranch').count()) throw new Error('Remote refs must be hidden until enabled');
   if (await page.locator('.range, .edge-count, .commit-node').count()) throw new Error('Commit ranges, commit counts, and commit nodes must not render in relation view');
 
+  await page.getByRole('tab', { name: 'Git 関係図' }).click();
+  await page.locator('.node').first().waitFor();
+  await page.screenshot({ path: join(imageDir, 'smoke-relation-graph.png'), fullPage: true });
+
   await page.getByRole('tab', { name: '分岐・マージ' }).click();
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5);
   await page.screenshot({ path: join(imageDir, 'smoke-significant-commits.png'), fullPage: true });
