@@ -7,6 +7,7 @@ describe('webview localization', () => {
     expect(strings.refresh).toBe('更新');
     expect(strings.relationGraph).toBe('Git 関係図');
     expect(strings.significantGraph).toBe('分岐・マージ');
+    expect(strings.significantGraphUnavailable).toContain('分岐・マージを読み込めません');
     expect(strings.commitGraph).toBe('コミット履歴');
     expect(strings.commitGraphUnavailable).toContain('コミット履歴を読み込めません');
     expect(strings.commitsAndRefs(3, 2)).toBe('3 件のコミット · 2 個の参照');

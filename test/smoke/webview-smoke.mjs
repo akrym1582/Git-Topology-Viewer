@@ -38,6 +38,14 @@ try {
   await page.locator('.node').first().waitFor();
   await page.screenshot({ path: join(imageDir, 'smoke-relation-graph.png'), fullPage: true });
 
+  await page.evaluate(() => window.__dispatchGraph(true, false, true, false));
+  await page.getByRole('tab', { name: '分岐・マージ' }).click();
+  await page.getByText('分岐・マージを読み込めません。ビューアーを更新してからもう一度試してください。').waitFor();
+  if (await page.locator('.app').count() !== 1 || await page.locator('.node').count() !== 4) throw new Error('Missing branch-and-merge data must keep the webview rendered');
+  const missingGraphRequest = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (missingGraphRequest?.type !== 'refresh') throw new Error(`Expected a refresh for missing branch-and-merge data: ${JSON.stringify(missingGraphRequest)}`);
+  await page.evaluate(() => window.__dispatchGraph());
+
   await page.getByRole('tab', { name: '分岐・マージ' }).click();
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5);
   await page.screenshot({ path: join(imageDir, 'smoke-significant-commits.png'), fullPage: true });
