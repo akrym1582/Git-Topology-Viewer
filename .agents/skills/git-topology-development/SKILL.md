@@ -30,15 +30,15 @@ the Git, domain, VS Code, and webview layers.
   and bodies only for the interaction that needs them.
 - Keep Git object reads read-only and avoid checkout for comparison.
 
-## Implement graph behavior
+## Implement relation behavior
 
-- Treat `CommitGraph` as immutable input and create a `ViewGraph` projection.
-- Determine significant commits from refs, merge parent counts, child counts, and
-  boundary requirements. Do not infer which branch was created from another.
-- Represent compressed paths explicitly, retain their commit IDs, and expand only
-  the requested range.
-- Test linear histories, roots, multiple roots, branch points, two-parent and
-  octopus merges, truncated parents, and refs sharing a commit as applicable.
+- Treat `CommitGraph` as immutable input and create a `RefViewGraph` projection.
+- Group visible refs by target commit, and connect each group to the nearest older
+  visible groups reachable through the DAG. Do not infer which branch was created
+  from another.
+- Never render, count, or expand intermediate commits in the relation view.
+- Test linear histories, roots, two-parent and octopus merges, truncated parents,
+  visibility settings, and refs sharing a commit as applicable.
 - Keep lane assignment deterministic for identical DAG/ref input.
 
 ## Implement integration and UI behavior

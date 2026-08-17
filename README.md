@@ -2,16 +2,16 @@
 
 [日本語版](README.ja.md)
 
-A VS Code extension for reading a repository's **commit DAG** at the level you need. Branches and tags remain labels on commits; the viewer never invents a branch-parent tree.
+A VS Code extension for understanding relationships between branches and tags from a repository's **commit DAG**. It never infers that one branch was created from another.
 
 ## Features
 
-- **Topology**, **Compact**, and **Full** vertical graph modes.
-- Collapsed linear commit ranges that expand independently.
-- Local branches and tags, with optional remote branches and a branch filter.
+- A vertical relation graph of local branches and optional tags or remote branches.
+- Edges connect a ref group to the nearest older visible ref groups in the Git DAG.
+- No commit nodes, commit counts, or commit-range expansion controls.
 - Ref comparison with merge base, unique commits, line statistics, and changed files.
-- Click a branch, tag, or remote ref to inspect its commit history; expand a commit to see file-level additions and deletions.
-- Read-only branch and commit file diffs opened in VS Code's standard diff editor—no checkout required.
+- Compare refs for merge bases, unique commits, line statistics, and changed files.
+- Read-only branch file diffs opened in VS Code's standard diff editor—no checkout required.
 - Git CLI discovery from VS Code's Git extension, `gitTopology.gitPath`, then `PATH`.
 
 ## Open the viewer
@@ -44,12 +44,6 @@ The screenshot is written to `artifacts/webview-smoke.png`. The complete environ
 automated assertions, manual review checklist, and troubleshooting notes live in
 `.agents/skills/git-topology-webview-smoke-test/`.
 
-## Sample
-
-![Git Topology Viewer sample](docs/images/webview-smoke.png)
-
-![Commit history and changed files](docs/images/smoke-branch-log.png)
-
 ## Design
 
-The extension loads SHA/parent/ref summaries first through `git for-each-ref` and `git rev-list`. The immutable DAG is converted into a mode-specific view graph and then laid out. Comparisons and file bodies are loaded only on demand through Git CLI commands.
+The extension loads SHA/parent/ref summaries first through `git for-each-ref` and `git rev-list`. The immutable DAG is projected into visible ref groups, with edges only where no other visible ref lies between them. Comparisons and file bodies are loaded only on demand through Git CLI commands.

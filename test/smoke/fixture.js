@@ -1,145 +1,30 @@
-const commits = {
-  head: 'f41acde1234567890',
-  mainline: 'e93b2101234567890',
-  release: 'c81d0451234567890',
-  feature: 'a772b901234567890',
-  develop: '91bd1201234567890',
-  root: '70af9831234567890'
-};
-
-function gitRef(name, type, commitId) {
-  const prefix = type === 'tag' ? 'refs/tags/' : 'refs/heads/';
-  return { name, fullName: `${prefix}${name}`, type, commitId };
-}
+const commits = { main: 'f41acde1234567890', release: 'c81d0451234567890', feature: 'a772b901234567890', develop: '91bd1201234567890' };
+function gitRef(name, type, commitId) { const prefix = type === 'tag' ? 'refs/tags/' : type === 'remoteBranch' ? 'refs/remotes/' : 'refs/heads/'; return { name, fullName: `${prefix}${name}`, type, commitId }; }
 
 const refs = [
-  gitRef('main', 'localBranch', commits.head),
-  gitRef('v1.2.0', 'tag', commits.release),
-  gitRef('feature/login', 'localBranch', commits.feature),
-  gitRef('develop', 'localBranch', commits.develop),
-  { name: 'origin/HEAD', fullName: 'refs/remotes/origin/HEAD', type: 'remoteBranch', commitId: commits.release },
-  { name: 'origin/release', fullName: 'refs/remotes/origin/release', type: 'remoteBranch', commitId: commits.release }
+  gitRef('main', 'localBranch', commits.main), gitRef('v1.2.0', 'tag', commits.release), gitRef('feature/login', 'localBranch', commits.feature), gitRef('develop', 'localBranch', commits.develop),
+  gitRef('origin/HEAD', 'remoteBranch', commits.release), gitRef('origin/release', 'remoteBranch', commits.release)
 ];
+const graph = {
+  nodes: [
+    { id: commits.main, lane: 0, row: 0, x: 70, y: 90, refs: [refs[0]] },
+    { id: commits.feature, lane: 1, row: 1, x: 260, y: 210, refs: [refs[2]] },
+    { id: commits.release, lane: 0, row: 2, x: 70, y: 330, refs: [refs[1], refs[4], refs[5]] },
+    { id: commits.develop, lane: 1, row: 3, x: 260, y: 450, refs: [refs[3]] }
+  ],
+  edges: [
+    { from: commits.main, to: commits.feature }, { from: commits.main, to: commits.release }, { from: commits.feature, to: commits.develop }, { from: commits.develop, to: commits.release }
+  ]
+};
 
-const positions = [
-  [commits.head, 70, 90, [refs[0]]],
-  [commits.mainline, 70, 200, []],
-  [commits.feature, 220, 310, [refs[2]]],
-  [commits.release, 70, 420, [refs[1], refs[4], refs[5]]],
-  [commits.develop, 220, 530, [refs[3]]],
-  [commits.root, 70, 640, []]
-];
-
-const nodes = positions.map(([id, x, y, nodeRefs], row) => ({
-  id, kind: 'commit', lane: x === 70 ? 0 : 1, row, x, y,
-  commit: { id, parents: [], refs: nodeRefs }
-}));
-
-nodes.push(
-  {
-    id: 'range:main', kind: 'range', lane: 0, row: 2, x: 70, y: 310,
-    range: { id: 'range:main', fromCommit: commits.mainline, toCommits: [commits.release], commits: [commits.mainline], count: 12, expanded: false }
-  },
-  {
-    id: 'range:feature', kind: 'range', lane: 1, row: 4, x: 220, y: 420,
-    range: { id: 'range:feature', fromCommit: commits.feature, toCommits: [commits.develop], commits: [], count: 8, expanded: false }
-  }
-);
-
-const edges = [
-  [commits.head, commits.mainline],
-  [commits.mainline, commits.release],
-  [commits.mainline, commits.feature],
-  [commits.feature, commits.develop],
-  [commits.develop, commits.root],
-  [commits.release, commits.root]
-].map(([from, to]) => ({ from, to, hiddenCommitCount: 0 }));
-
-function dispatchGraph(expandedRangeIds = []) {
-  const expanded = new Set(expandedRangeIds);
-  window.dispatchEvent(new MessageEvent('message', {
-    data: {
-      type: 'graph',
-      payload: {
-        repository: 'commerce-platform',
-        currentBranch: 'main',
-        branchStatuses: [
-          { ref: 'refs/heads/main', local: true, remote: false },
-          { ref: 'refs/heads/feature/login', local: true, remote: false },
-          { ref: 'refs/heads/develop', local: true, remote: false },
-        ],
-        mode: 'topology',
-        expandedRangeIds,
-        refs,
-        graph: {
-          nodes: nodes.map(node => node.kind === 'range'
-            ? { ...node, range: { ...node.range, expanded: expanded.has(node.id) } }
-            : node),
-          edges
-        }
-      }
-    }
-  }));
-}
-
+function dispatchGraph(tags = true, remotes = false) { const visible = nodeRefs => nodeRefs.filter(item => item.type === 'localBranch' || (item.type === 'tag' && tags) || (item.type === 'remoteBranch' && remotes)); const filteredGraph = { ...graph, nodes: graph.nodes.map(node => ({ ...node, refs: visible(node.refs) })).filter(node => node.refs.length) }; window.dispatchEvent(new MessageEvent('message', { data: { type: 'graph', payload: { repository: 'commerce-platform', currentBranch: 'main', branchStatuses: [{ ref: 'refs/heads/main', local: true, remote: false }, { ref: 'refs/heads/feature/login', local: true, remote: false }, { ref: 'refs/heads/develop', local: true, remote: false }], refs, graph: filteredGraph } } })); }
 setTimeout(() => dispatchGraph(), 50);
 
-const expandedRanges = new Set();
-let handledRangeRequests = 0;
-setInterval(() => {
-  const requests = window.__vscodeMessages.filter(message => message.type === 'expandRange');
-  if (requests.length <= handledRangeRequests) return;
-  const request = requests[handledRangeRequests++];
-  if (expandedRanges.has(request.rangeId)) expandedRanges.delete(request.rangeId);
-  else expandedRanges.add(request.rangeId);
-  dispatchGraph([...expandedRanges]);
-}, 20);
+let handledVisibilityRequests = 0;
+setInterval(() => { const requests = window.__vscodeMessages.filter(message => message.type === 'setRefVisibility'); if (requests.length <= handledVisibilityRequests) return; const request = requests[handledVisibilityRequests++]; dispatchGraph(request.tags, request.remotes); }, 20);
 
-window.__smokeComparison = {
-  type: 'comparison',
-  payload: {
-    left: 'refs/heads/main',
-    right: 'refs/heads/develop',
-    mode: 'divergence',
-    mergeBases: [commits.root],
-    ahead: 12,
-    behind: 3,
-    additions: 532,
-    deletions: 128,
-    files: [
-      { status: 'M', path: 'src/AuthService.ts' },
-      { status: 'A', path: 'src/LoginService.ts' },
-      { status: 'D', path: 'src/OldLoginService.ts' }
-    ],
-    onlyLeft: [],
-    onlyRight: []
-  }
-};
+window.__smokeComparison = { type: 'comparison', payload: { left: 'refs/heads/main', right: 'refs/heads/develop', mode: 'divergence', mergeBases: [commits.release], ahead: 12, behind: 3, additions: 532, deletions: 128, files: [{ status: 'M', path: 'src/AuthService.ts' }, { status: 'A', path: 'src/LoginService.ts' }, { status: 'D', path: 'src/OldLoginService.ts' }], onlyLeft: [], onlyRight: [] } };
 
-window.__smokeRefLog = {
-  type: 'refLog',
-  payload: {
-    ref: 'refs/heads/main',
-    commits: [
-      { id: commits.head, subject: 'Polish authentication flow' },
-      { id: commits.mainline, subject: 'Merge feature/login' }
-    ]
-  }
-};
-
-window.__smokeCommitDetails = {
-  type: 'commitDetails',
-  payload: {
-    commit: { id: commits.head, subject: 'Polish authentication flow' },
-    parent: commits.mainline,
-    additions: 14,
-    deletions: 3,
-    files: [
-      { status: 'M', path: 'src/AuthService.ts', additions: 10, deletions: 2 },
-      { status: 'A', path: 'src/LoginService.ts', additions: 4, deletions: 1 }
-    ]
-  }
-};
 let handledMenuRequests = 0;
 setInterval(() => {
   const requests = window.__vscodeMessages.filter(message => message.type === 'contextMenu');
@@ -148,24 +33,8 @@ setInterval(() => {
   const isCurrent = request.nodeId === 'refs/heads/main';
   const isPair = request.selectedRefs?.length === 2;
   const item = (command, label, group, enabled = true) => ({ command, label, group, enabled, visible: true });
-  const items = isPair ? [
-    item('compareSelected', '選択した参照を比較', 'compare'),
-    item('compareSelectedSnapshots', '現在のスナップショットを比較', 'compare'),
-    item('showSelectedMergeBase', 'マージベースを表示', 'compare')
-  ] : [
-    item('compareCurrent', '現在のブランチと比較', 'compare', !isCurrent),
-    item('selectCompareBase', '比較ベースとして選択', 'compare'),
-    item('compareWith', '比較対象を選択…', 'compare'),
-    item('showMergeBase', 'マージベースを表示', 'compare', !isCurrent),
-    item('focus', 'このブランチにフォーカス', 'graph'),
-    item('related', '関連するブランチのみ表示', 'graph'),
-    item('expandCommits', 'コミットを展開', 'graph'),
-    item('collapseCommits', 'コミットを折りたたむ', 'graph'),
-    item('checkout', 'チェックアウト', 'git', !isCurrent),
-    item('createBranch', 'ここからブランチを作成…', 'git'),
-    item('copyName', 'ブランチ名をコピー', 'copy'), item('copyHash', 'コミットハッシュをコピー', 'copy')
+  const items = isPair ? [item('compareSelected', '選択した参照を比較', 'compare'), item('compareSelectedSnapshots', '現在のスナップショットを比較', 'compare'), item('showSelectedMergeBase', 'マージベースを表示', 'compare')] : [
+    item('compareCurrent', '現在のブランチと比較', 'compare', !isCurrent), item('selectCompareBase', '比較ベースとして選択', 'compare'), item('compareWith', '比較対象を選択…', 'compare'), item('showMergeBase', 'マージベースを表示', 'compare', !isCurrent), item('focus', 'このブランチにフォーカス', 'graph'), item('related', '関連するブランチのみ表示', 'graph'), item('checkout', 'チェックアウト', 'git', !isCurrent), item('createBranch', 'ここからブランチを作成…', 'git'), item('copyName', 'ブランチ名をコピー', 'copy')
   ];
-  window.dispatchEvent(new MessageEvent('message', { data: {
-    type: 'contextMenuItems', nodeId: request.nodeId, selectedRefs: request.selectedRefs, x: request.x, y: request.y, items
-  }}));
+  window.dispatchEvent(new MessageEvent('message', { data: { type: 'contextMenuItems', nodeId: request.nodeId, selectedRefs: request.selectedRefs, x: request.x, y: request.y, items } }));
 }, 20);

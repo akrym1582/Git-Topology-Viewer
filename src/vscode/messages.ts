@@ -1,6 +1,4 @@
-import { ViewMode } from '../domain/models';
-
-export type GraphMenuCommand = 'compareCurrent' | 'selectCompareBase' | 'compareBase' | 'compareWith' | 'showMergeBase' | 'showChangedFiles' | 'compareSelected' | 'compareSelectedSnapshots' | 'showSelectedMergeBase' | 'focus' | 'related' | 'expandCommits' | 'collapseCommits' | 'checkout' | 'createBranch' | 'copyName' | 'copyHash' | 'push' | 'pull' | 'fetch' | 'checkoutRemote' | 'mergeIntoCurrent' | 'rebaseCurrentOnto' | 'deleteLocal' | 'deleteRemote' | 'continueRebase' | 'abortRebase' | 'continueCherryPick' | 'abortCherryPick';
+export type GraphMenuCommand = 'compareCurrent' | 'selectCompareBase' | 'compareBase' | 'compareWith' | 'showMergeBase' | 'showChangedFiles' | 'compareSelected' | 'compareSelectedSnapshots' | 'showSelectedMergeBase' | 'focus' | 'related' | 'checkout' | 'createBranch' | 'copyName' | 'copyHash' | 'push' | 'pull' | 'fetch' | 'checkoutRemote' | 'mergeIntoCurrent' | 'rebaseCurrentOnto' | 'deleteLocal' | 'deleteRemote' | 'continueRebase' | 'abortRebase' | 'continueCherryPick' | 'abortCherryPick';
 export interface GraphContextMenuItem { command: GraphMenuCommand; label: string; enabled: boolean; visible: boolean; group: 'compare' | 'graph' | 'git' | 'manage' | 'copy' }
 
 type ComparisonMode = 'divergence' | 'snapshot';
@@ -8,14 +6,10 @@ type ChangedFileStatus = 'A' | 'D' | 'M' | 'R' | 'C' | 'T' | 'U' | 'X' | 'B';
 
 export type WebviewRequest =
   | { type: 'refresh' }
-  | { type: 'setViewMode'; mode: ViewMode }
   | { type: 'setRefVisibility'; tags: boolean; remotes: boolean }
-  | { type: 'expandRange'; rangeId: string }
   | { type: 'contextMenu'; nodeType: 'branch' | 'remoteBranch' | 'tag' | 'commit'; nodeId: string; selectedRefs: string[]; x: number; y: number }
   | { type: 'runContextCommand'; command: GraphMenuCommand; nodeId: string; selectedRefs?: string[] }
   | { type: 'compareRefs'; left: string; right: string; mode: ComparisonMode }
-  | { type: 'showRefLog'; ref: string }
-  | { type: 'showCommitDetails'; commit: string }
   | { type: 'switchBranch'; ref: string }
   | { type: 'mergeBranch'; ref: string }
   | { type: 'openDiff'; left: string; right: string; path: string; oldPath?: string; status: ChangedFileStatus }
@@ -43,25 +37,17 @@ export function isWebviewRequest(value: unknown): value is WebviewRequest {
   switch (value.type) {
     case 'refresh':
       return true;
-    case 'setViewMode':
-      return value.mode === 'topology' || value.mode === 'compact' || value.mode === 'full';
     case 'setRefVisibility':
       return typeof value.tags === 'boolean' && typeof value.remotes === 'boolean';
-    case 'expandRange':
-      return isString(value.rangeId);
     case 'contextMenu':
       return (value.nodeType === 'branch' || value.nodeType === 'remoteBranch' || value.nodeType === 'tag' || value.nodeType === 'commit')
         && isString(value.nodeId) && isRefSelection(value.selectedRefs) && typeof value.x === 'number' && typeof value.y === 'number';
     case 'runContextCommand':
       return isString(value.nodeId) && (value.selectedRefs === undefined || isRefSelection(value.selectedRefs))
-        && ['compareCurrent','selectCompareBase','compareBase','compareWith','showMergeBase','showChangedFiles','compareSelected','compareSelectedSnapshots','showSelectedMergeBase','focus','related','expandCommits','collapseCommits','checkout','createBranch','copyName','copyHash','push','pull','fetch','checkoutRemote','mergeIntoCurrent','rebaseCurrentOnto','deleteLocal','deleteRemote','continueRebase','abortRebase','continueCherryPick','abortCherryPick'].includes(String(value.command));
+        && ['compareCurrent','selectCompareBase','compareBase','compareWith','showMergeBase','showChangedFiles','compareSelected','compareSelectedSnapshots','showSelectedMergeBase','focus','related','checkout','createBranch','copyName','copyHash','push','pull','fetch','checkoutRemote','mergeIntoCurrent','rebaseCurrentOnto','deleteLocal','deleteRemote','continueRebase','abortRebase','continueCherryPick','abortCherryPick'].includes(String(value.command));
     case 'compareRefs':
       return isString(value.left) && isString(value.right)
         && (value.mode === 'divergence' || value.mode === 'snapshot');
-    case 'showRefLog':
-      return isString(value.ref);
-    case 'showCommitDetails':
-      return isCommitId(value.commit);
     case 'switchBranch':
     case 'mergeBranch':
       return isString(value.ref);

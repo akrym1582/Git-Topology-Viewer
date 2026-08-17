@@ -35,7 +35,8 @@ Browser downloads and OS packages are machine setup, not repository artifacts.
 3. Load the fixture and production JS/CSS in a 1440 x 900 headless Chromium page.
 4. Inject a mock `acquireVsCodeApi()` that records outbound messages.
 5. Send a representative graph response to React.
-6. Assert commit nodes and collapsed ranges are rendered.
+6. Assert ref groups and their relation edges are rendered, without commit nodes
+   or collapsed ranges.
 7. Select `main`, choose `develop`, and click **Compare refs**.
 8. Assert the outbound `compareRefs` request.
 9. Send a comparison response and assert statistics and changed files render.
@@ -46,7 +47,7 @@ Browser downloads and OS packages are machine setup, not repository artifacts.
 
 - Production bundle and stylesheet can be loaded over HTTP.
 - The loading screen transitions to the graph.
-- Expected commit and collapsed-range counts render.
+- Expected ref groups and relationship edges render.
 - Clicking a ref opens its inspector.
 - Selecting a comparison target sends the expected message contract.
 - Comparison metrics and file rows render from an extension response.
@@ -59,7 +60,7 @@ Inspect the screenshot for:
 - latest-to-oldest vertical flow and horizontal lane separation;
 - continuous, correctly connected SVG paths at divergence and convergence;
 - readable branch/tag labels without overlap or clipping;
-- collapsed ranges placed on the intended lane and visually clickable;
+- ref groups placed on intended lanes, with readable and non-overlapping labels;
 - active mode, filter controls, repository identity, and node/ref totals;
 - selected-ref inspector hierarchy and aligned controls;
 - merge base, ahead/behind, file count, additions/deletions, and M/A/D colors;

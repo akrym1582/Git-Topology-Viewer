@@ -27,7 +27,7 @@ repository, while generated screenshots belong in ignored `artifacts/`.
 2. Confirm that the process reports `Webview smoke test passed`.
 3. Open `artifacts/webview-smoke.png` with an image viewer. Do not treat script
    success as visual approval.
-4. Inspect graph direction, lane edges, labels, collapsed ranges, toolbar state,
+4. Inspect graph direction, lane edges, ref labels, toolbar state,
    inspector layout, comparison metrics, changed-file statuses, clipping, contrast,
    and unexpected blank space.
 5. Report the exact command and screenshot path. Attach or publish the screenshot
@@ -37,9 +37,9 @@ Set `SMOKE_SCREENSHOT=/absolute/path.png` to choose another output path.
 
 ## Maintain the fixture
 
-- Keep `test/smoke/fixture.js` deterministic and representative: mainline,
-  divergence, merge-shaped edges, branch and tag refs, collapsed ranges, and a
-  comparison containing modified/added/deleted files.
+- Keep `test/smoke/fixture.js` deterministic and representative: ref groups,
+  divergence, merge-shaped relations, branch and tag refs, and a comparison
+  containing modified/added/deleted files.
 - Update fixture messages whenever the serialized extension/webview contract changes.
 - Add assertions for new critical interactions rather than relying only on pixels.
 - Exercise the bundled assets through the local HTTP server; do not import source

@@ -7,9 +7,11 @@ operation UI. Preserve these invariants in every change:
 
 1. The commit DAG returned by Git is the source of truth. Never persist or invent a
    parent/child hierarchy between branches.
-2. Branches and tags are `GitRef` labels attached to commits, not graph nodes.
-3. Topology, Compact, and Full are projections of the same DAG. Mode changes must
-   not mutate the underlying `CommitGraph`.
+2. The relation view projects visible `GitRef` groups from commits. Its nodes do
+   not claim that one branch was created from another.
+3. A relation edge means that a visible ref is reachable through the DAG without
+   crossing another visible ref. The view must not expose or require commit-range
+   expansion.
 4. Delegate repository semantics to the Git CLI rather than reimplementing them.
 5. Keep the domain layer independent of `vscode`, React, and webview APIs.
 6. Treat repository access as read-only unless a task explicitly requests a write
@@ -35,8 +37,8 @@ from `domain` to an integration layer. Keep extension/webview messages serializa
 1. Inspect `git status` and the relevant models before editing.
 2. Put Git command construction/parsing in `src/git`; put pure transformations in
    `src/domain`; keep presentation decisions in `src/webview`.
-3. Add or update tests for graph compression, merges, branch points, lane behavior,
-   parsing, or message contracts affected by the change.
+3. Add or update tests for ref relationships, merges, lane behavior, parsing, or
+   message contracts affected by the change.
 4. Run `pwsh -NoProfile -File .agents/skills/git-topology-development/scripts/validate.ps1` before commit.
 5. For a perceptible webview change, build and inspect it in VS Code or a browser
    harness and capture a screenshot. Follow

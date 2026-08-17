@@ -6,15 +6,14 @@ import { CommitLoader } from '../git/CommitLoader';
 import { DiffService } from '../git/DiffService';
 import { BranchOperationService } from '../git/BranchOperationService';
 import { BranchStatusService } from '../git/BranchStatusService';
-import { TopologyBuilder } from '../domain/TopologyBuilder';
-import { BranchStatus, CommitGraph, GitRef, RefVisibility, ViewMode } from '../domain/models';
+import { BranchRelationBuilder } from '../domain/BranchRelationBuilder';
+import { BranchStatus, CommitGraph, GitRef, RefVisibility } from '../domain/models';
 import { GitContentProvider } from './GitContentProvider';
 import { GraphContextMenuItem, GraphMenuCommand, isWebviewRequest, WebviewRequest } from './messages';
 import { ContextMenuPolicy } from './ContextMenuPolicy';
 
 export class TopologyPanel {
   private static current: TopologyPanel | undefined;
-  private mode: ViewMode = 'topology'; private expanded = new Set<string>();
   private compareBase?: string; private mergeBaseIds: string[] = []; private focusedRef?: string;
   private refs: GitRef[] = []; private branchStatuses: BranchStatus[] = []; private graph?: CommitGraph; private currentBranch?: string;
   private refVisibility: RefVisibility = { tags: true, remotes: false };
@@ -44,7 +43,7 @@ export class TopologyPanel {
   }
   private sendGraph() {
     if (!this.graph) return;
-    this.post({ type: 'graph', payload: { graph: new TopologyBuilder().build(this.graph, this.mode, this.expanded, this.refVisibility), refs: this.refs, branchStatuses: this.branchStatuses, repository: path.basename(this.root), currentBranch: this.currentBranch, compareBase: this.compareBase, mergeBaseIds: this.mergeBaseIds, focusedRef: this.focusedRef, mode: this.mode, expandedRangeIds: [...this.expanded] } });
+    this.post({ type: 'graph', payload: { graph: new BranchRelationBuilder().build(this.graph, this.refVisibility), refs: this.refs, branchStatuses: this.branchStatuses, repository: path.basename(this.root), currentBranch: this.currentBranch, compareBase: this.compareBase, mergeBaseIds: this.mergeBaseIds, focusedRef: this.focusedRef } });
   }
   private receiveMessage(message: unknown): void {
     if (!isWebviewRequest(message)) {
@@ -55,14 +54,8 @@ export class TopologyPanel {
   }
   private async message(message: WebviewRequest) {
     try {
-      if (message.type === 'refresh') { this.expanded.clear(); await this.load(); }
-      if (message.type === 'setViewMode') { this.mode = message.mode; this.sendGraph(); }
-      if (message.type === 'setRefVisibility') { this.refVisibility = { tags: message.tags, remotes: message.remotes }; this.expanded.clear(); this.sendGraph(); }
-      if (message.type === 'expandRange') {
-        if (this.expanded.has(message.rangeId)) this.expanded.delete(message.rangeId);
-        else this.expanded.add(message.rangeId);
-        this.sendGraph();
-      }
+      if (message.type === 'refresh') await this.load();
+      if (message.type === 'setRefVisibility') { this.refVisibility = { tags: message.tags, remotes: message.remotes }; this.sendGraph(); }
       if (message.type === 'contextMenu') this.sendContextMenu(message.nodeId, message.selectedRefs, message.x, message.y);
       if (message.type === 'runContextCommand') await this.runContextCommand(message.command, message.nodeId, message.selectedRefs);
       if (message.type === 'compareRefs') {
@@ -70,11 +63,6 @@ export class TopologyPanel {
         this.assertKnownRef(message.right);
         this.post({ type: 'comparison', payload: await this.diff.compare(message.left, message.right, message.mode) });
       }
-      if (message.type === 'showRefLog') {
-        this.assertKnownRef(message.ref);
-        this.post({ type: 'refLog', payload: { ref: message.ref, commits: await this.diff.log(message.ref) } });
-      }
-      if (message.type === 'showCommitDetails') this.post({ type: 'commitDetails', payload: await this.diff.commitDetails(message.commit) });
       if (message.type === 'switchBranch') await this.switchBranch(message.ref);
       if (message.type === 'mergeBranch') await this.mergeBranch(message.ref);
       if (message.type === 'openDiff') {
@@ -108,7 +96,6 @@ export class TopologyPanel {
       item('showMergeBase', this.t('Show Merge Base'), 'compare', hasCurrent || hasBase),
       item('focus', this.t(ref.type === 'tag' ? 'Focus on This Tag' : 'Focus on This Branch'), 'graph'),
       item('related', this.t('Show Related Branches Only'), 'graph'),
-      item('expandCommits', this.t('Expand Commits'), 'graph'), item('collapseCommits', this.t('Collapse Commits'), 'graph'),
       item('checkout', this.t('Checkout'), 'git', local && this.currentBranch !== ref.name), item('createBranch', this.t('Create Branch from Here…'), 'git'),
       item('copyName', this.t(ref.type === 'tag' ? 'Copy Tag Name' : 'Copy Branch Name'), 'copy'), item('copyHash', this.t('Copy Commit Hash'), 'copy')
     ];
@@ -138,8 +125,6 @@ export class TopologyPanel {
     if (command === 'compareBase' || command === 'showChangedFiles') await this.compare(ref.fullName, comparisonBase);
     if (command === 'showMergeBase') { const result = await this.compare(ref.fullName, comparisonBase); this.mergeBaseIds = result.mergeBases; this.sendGraph(); }
     if (command === 'focus' || command === 'related') { this.focusedRef = this.focusedRef === ref.fullName ? undefined : ref.fullName; this.post({ type: 'focusRef', ref: this.focusedRef, commitId: ref.commitId, relatedOnly: command === 'related' }); this.sendGraph(); }
-    if (command === 'expandCommits') { this.mode = 'full'; this.sendGraph(); }
-    if (command === 'collapseCommits') { this.mode = 'topology'; this.expanded.clear(); this.sendGraph(); }
     if (command === 'checkout') await this.switchBranch(ref.fullName);
     if (command === 'createBranch') await this.createBranch(ref);
     if (command === 'push') await this.push(ref);

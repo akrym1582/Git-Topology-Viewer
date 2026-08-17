@@ -5,22 +5,24 @@
 | Layer | Owns | Must not own |
 | --- | --- | --- |
 | Git | Executable resolution, safe process invocation, Git output parsing | DAG presentation, VS Code API |
-| Domain | Commit/ref models, significance, compression, layout, relations | Processes, React, VS Code API |
+| Domain | Commit/ref models, relation projection, layout | Processes, React, VS Code API |
 | VS Code | Commands, panels, virtual documents, diff editor, webview mediation | Graph semantics, UI rendering |
 | Webview | Controls, SVG rendering, selection and comparison presentation | Git execution, repository filesystem access |
 
-The data flow is `Git CLI -> Git layer -> CommitGraph -> ViewGraph -> Webview`.
+The data flow is `Git CLI -> Git layer -> CommitGraph -> RefViewGraph -> Webview`.
 User actions travel back as messages and are handled by the extension host.
 
 ## Graph semantics
 
-- A `GitRef` points to a commit. It is never an independent graph vertex.
+- A `GitRef` points to a commit. The relation view groups visible refs by their
+  target commit without claiming that a ref is a DAG vertex.
 - `CommitGraph.nodes` and `CommitGraph.order` describe the source DAG.
-- A view mode selects visible commits; it does not add/remove source DAG commits.
-- A branch point is a commit with multiple known children. A merge has multiple
-  parents. Root and truncation boundaries remain visible when required for edges.
-- A collapsed range describes a linear path between visible commits. Expansion
-  changes visibility for that range only.
+- The relation view contains only visible ref groups. Its edges connect a ref
+  group to the nearest older visible ref groups reachable through the DAG.
+- A merge can produce multiple relation edges. Those edges describe reachability,
+  never an inferred branch-parent hierarchy.
+- Intermediate commits remain in the immutable source DAG and are never rendered
+  or expanded in the relation view.
 
 ## Comparison direction
 
@@ -40,8 +42,8 @@ the virtual document provider instead of checking out either ref.
 Requests should be discriminated unions with validated fields. Responses should
 contain plain serializable objects—never `Map`, `Set`, VS Code objects, or class
 instances. The panel owns Git services and sends rendered-model data; the webview
-only sends intent such as changing mode, expanding a range, comparing refs, or
-opening a diff.
+only sends intent such as changing ref visibility, comparing refs, or opening a
+diff.
 
 ## Performance guardrails
 

@@ -1,6 +1,6 @@
 {
   "displayName": "Git トポロジービューアー",
-  "description": "すべてのコミットをたどらずに、ブランチ、タグ、分岐、マージを把握できます。",
+  "description": "コミットを並べずに、ブランチ、タグ、分岐、マージの関係を把握できます。",
   "command.open": "Git トポロジー: ビューアーを開く",
   "configuration.title": "Git トポロジー",
   "configuration.gitPath.description": "Git 実行ファイルへのパスです。空欄の場合は VS Code の Git パスまたは PATH を使用します。",
