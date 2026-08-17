@@ -8,6 +8,7 @@ import { BranchOperationService } from '../git/BranchOperationService';
 import { BranchStatusService } from '../git/BranchStatusService';
 import { BranchRelationBuilder } from '../domain/BranchRelationBuilder';
 import { CommitGraphBuilder } from '../domain/CommitGraphBuilder';
+import { SignificantCommitGraphBuilder } from '../domain/SignificantCommitGraphBuilder';
 import { BranchStatus, CommitGraph, GitRef, RefVisibility } from '../domain/models';
 import { GitContentProvider } from './GitContentProvider';
 import { GraphContextMenuItem, GraphMenuCommand, isWebviewRequest, WebviewRequest } from './messages';
@@ -48,7 +49,8 @@ export class TopologyPanel {
     if (!this.graph) return;
     this.relation = new BranchRelationBuilder().build(this.graph, this.refVisibility);
     this.commitView = new CommitGraphBuilder().build(this.graph, this.refVisibility);
-    this.post({ type: 'graph', payload: { graph: this.relation, commitGraph: this.commitView, refs: this.refs, branchStatuses: this.branchStatuses, repository: path.basename(this.root), currentBranch: this.currentBranch, compareBase: this.compareBase, mergeBaseIds: this.mergeBaseIds, focusedRef: this.focusedRef } });
+    const significantGraph = new SignificantCommitGraphBuilder().build(this.graph, this.refVisibility);
+    this.post({ type: 'graph', payload: { graph: this.relation, significantGraph, commitGraph: this.commitView, refs: this.refs, branchStatuses: this.branchStatuses, repository: path.basename(this.root), currentBranch: this.currentBranch, compareBase: this.compareBase, mergeBaseIds: this.mergeBaseIds, focusedRef: this.focusedRef } });
   }
   private receiveMessage(message: unknown): void {
     if (!isWebviewRequest(message)) {

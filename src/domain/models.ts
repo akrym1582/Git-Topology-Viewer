@@ -15,4 +15,4 @@ export interface ChangedFile { status: string; path: string; oldPath?: string; a
 export interface CommitInfo { id: string; subject: string }
 export interface RefLog { ref: string; commits: CommitInfo[]; branchPoint?: CommitInfo }
 export interface CommitDetails { commit: CommitInfo; parent?: string; additions: number; deletions: number; files: ChangedFile[] }
-export interface GraphPayload { graph: RefViewGraph; commitGraph: CommitViewGraph; refs: GitRef[]; branchStatuses: BranchStatus[]; repository: string; currentBranch?: string; compareBase?: string; mergeBaseIds: string[]; focusedRef?: string }
+export interface GraphPayload { graph: RefViewGraph; significantGraph: CommitViewGraph; commitGraph: CommitViewGraph; refs: GitRef[]; branchStatuses: BranchStatus[]; repository: string; currentBranch?: string; compareBase?: string; mergeBaseIds: string[]; focusedRef?: string }
