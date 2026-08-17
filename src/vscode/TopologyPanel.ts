@@ -7,7 +7,7 @@ import { DiffService } from '../git/DiffService';
 import { BranchOperationService } from '../git/BranchOperationService';
 import { BranchStatusService } from '../git/BranchStatusService';
 import { TopologyBuilder } from '../domain/TopologyBuilder';
-import { BranchStatus, CommitGraph, GitRef, ViewMode } from '../domain/models';
+import { BranchStatus, CommitGraph, GitRef, RefVisibility, ViewMode } from '../domain/models';
 import { GitContentProvider } from './GitContentProvider';
 import { GraphContextMenuItem, GraphMenuCommand, isWebviewRequest, WebviewRequest } from './messages';
 import { ContextMenuPolicy } from './ContextMenuPolicy';
@@ -17,6 +17,7 @@ export class TopologyPanel {
   private mode: ViewMode = 'topology'; private expanded = new Set<string>();
   private compareBase?: string; private mergeBaseIds: string[] = []; private focusedRef?: string;
   private refs: GitRef[] = []; private branchStatuses: BranchStatus[] = []; private graph?: CommitGraph; private currentBranch?: string;
+  private refVisibility: RefVisibility = { tags: true, remotes: false };
   private readonly diff: DiffService; private readonly disposables: vscode.Disposable[] = [];
   private readonly operations: BranchOperationService;
   private readonly menuPolicy = new ContextMenuPolicy();
@@ -43,7 +44,7 @@ export class TopologyPanel {
   }
   private sendGraph() {
     if (!this.graph) return;
-    this.post({ type: 'graph', payload: { graph: new TopologyBuilder().build(this.graph, this.mode, this.expanded), refs: this.refs, branchStatuses: this.branchStatuses, repository: path.basename(this.root), currentBranch: this.currentBranch, compareBase: this.compareBase, mergeBaseIds: this.mergeBaseIds, focusedRef: this.focusedRef, mode: this.mode, expandedRangeIds: [...this.expanded] } });
+    this.post({ type: 'graph', payload: { graph: new TopologyBuilder().build(this.graph, this.mode, this.expanded, this.refVisibility), refs: this.refs, branchStatuses: this.branchStatuses, repository: path.basename(this.root), currentBranch: this.currentBranch, compareBase: this.compareBase, mergeBaseIds: this.mergeBaseIds, focusedRef: this.focusedRef, mode: this.mode, expandedRangeIds: [...this.expanded] } });
   }
   private receiveMessage(message: unknown): void {
     if (!isWebviewRequest(message)) {
@@ -56,6 +57,7 @@ export class TopologyPanel {
     try {
       if (message.type === 'refresh') { this.expanded.clear(); await this.load(); }
       if (message.type === 'setViewMode') { this.mode = message.mode; this.sendGraph(); }
+      if (message.type === 'setRefVisibility') { this.refVisibility = { tags: message.tags, remotes: message.remotes }; this.expanded.clear(); this.sendGraph(); }
       if (message.type === 'expandRange') {
         if (this.expanded.has(message.rangeId)) this.expanded.delete(message.rangeId);
         else this.expanded.add(message.rangeId);

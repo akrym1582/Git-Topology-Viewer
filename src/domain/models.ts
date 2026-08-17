@@ -1,5 +1,6 @@
 export type RefType = 'localBranch' | 'remoteBranch' | 'tag';
 export interface GitRef { name: string; fullName: string; type: RefType; commitId: string }
+export interface RefVisibility { tags: boolean; remotes: boolean }
 export interface BranchStatus { ref: string; local: boolean; remote: boolean; upstream?: string; ahead?: number; behind?: number }
 export interface CommitNode { id: string; parents: string[]; author?: string; date?: string; message?: string; refs: GitRef[] }
 export interface CommitGraph { nodes: Map<string, CommitNode>; order: string[] }

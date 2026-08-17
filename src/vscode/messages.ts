@@ -9,6 +9,7 @@ type ChangedFileStatus = 'A' | 'D' | 'M' | 'R' | 'C' | 'T' | 'U' | 'X' | 'B';
 export type WebviewRequest =
   | { type: 'refresh' }
   | { type: 'setViewMode'; mode: ViewMode }
+  | { type: 'setRefVisibility'; tags: boolean; remotes: boolean }
   | { type: 'expandRange'; rangeId: string }
   | { type: 'contextMenu'; nodeType: 'branch' | 'remoteBranch' | 'tag' | 'commit'; nodeId: string; selectedRefs: string[]; x: number; y: number }
   | { type: 'runContextCommand'; command: GraphMenuCommand; nodeId: string; selectedRefs?: string[] }
@@ -44,6 +45,8 @@ export function isWebviewRequest(value: unknown): value is WebviewRequest {
       return true;
     case 'setViewMode':
       return value.mode === 'topology' || value.mode === 'compact' || value.mode === 'full';
+    case 'setRefVisibility':
+      return typeof value.tags === 'boolean' && typeof value.remotes === 'boolean';
     case 'expandRange':
       return isString(value.rangeId);
     case 'contextMenu':

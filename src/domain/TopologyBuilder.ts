@@ -1,11 +1,11 @@
-import { CommitGraph, CollapsedCommitRange, ViewGraph, ViewMode, ViewNode } from './models';
+import { CommitGraph, CollapsedCommitRange, RefVisibility, ViewGraph, ViewMode, ViewNode } from './models';
 
 const TOP_PADDING = 90;
 const ROW_HEIGHT = 110;
 
 export class TopologyBuilder {
-  build(graph: CommitGraph, mode: ViewMode, expanded = new Set<string>()): ViewGraph {
-    const significant = new Set(graph.order.filter(id => this.isAnchor(graph, id)));
+  build(graph: CommitGraph, mode: ViewMode, expanded = new Set<string>(), visibility: RefVisibility = { tags: true, remotes: true }): ViewGraph {
+    const significant = new Set(graph.order.filter(id => this.isAnchor(graph, id, visibility)));
     if (mode === 'compact') graph.order.forEach(id => { const n = graph.nodes.get(id)!; if (n.message) significant.add(id); });
     if (mode === 'full') graph.order.forEach(id => significant.add(id));
     const ranges = this.buildRanges(graph, significant, expanded);
@@ -31,9 +31,10 @@ export class TopologyBuilder {
     }
     return { nodes, edges };
   }
-  private isAnchor(graph: CommitGraph, id: string): boolean {
+  private isAnchor(graph: CommitGraph, id: string, visibility: RefVisibility): boolean {
     const node = graph.nodes.get(id)!;
-    return node.refs.length > 0 || node.parents.length === 0 || node.parents.some(parent => !graph.nodes.has(parent));
+    const hasVisibleRef = node.refs.some(ref => ref.type === 'localBranch' || (ref.type === 'tag' && visibility.tags) || (ref.type === 'remoteBranch' && visibility.remotes));
+    return hasVisibleRef || node.parents.length === 0 || node.parents.some(parent => !graph.nodes.has(parent));
   }
   private buildRanges(graph: CommitGraph, significant: Set<string>, expanded: Set<string>): CollapsedCommitRange[] {
     return graph.order.flatMap(from => {

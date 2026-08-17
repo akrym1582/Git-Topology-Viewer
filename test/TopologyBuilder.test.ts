@@ -93,4 +93,18 @@ describe('TopologyBuilder',()=>{
     expect(view.nodes.filter(node => node.kind === 'commit').map(node => node.id)).toEqual(['main','topic','base']);
     expect(view.edges).toContainEqual({ from: 'main', to: 'topic', hiddenCommitCount: 2 });
   });
+  it('collapses a hidden remote-tracking branch without leaving an empty commit node',()=>{
+    const nodes = new Map();
+    nodes.set('main',{id:'main',parents:['stale-remote'],refs:[{name:'main',fullName:'refs/heads/main',type:'localBranch',commitId:'main'}]});
+    nodes.set('stale-remote',{id:'stale-remote',parents:['base'],refs:[{name:'origin/deleted-topic',fullName:'refs/remotes/origin/deleted-topic',type:'remoteBranch',commitId:'stale-remote'}]});
+    nodes.set('base',{id:'base',parents:[],refs:[]});
+    const graph = {nodes,order:['main','stale-remote','base']};
+
+    const hidden = new TopologyBuilder().build(graph, 'topology', new Set(), { tags: true, remotes: false });
+    const shown = new TopologyBuilder().build(graph, 'topology', new Set(), { tags: true, remotes: true });
+
+    expect(hidden.nodes.filter(node => node.kind === 'commit').map(node => node.id)).toEqual(['main','base']);
+    expect(hidden.nodes.find(node => node.kind === 'range')?.range?.commits).toEqual(['stale-remote']);
+    expect(shown.nodes.filter(node => node.kind === 'commit').map(node => node.id)).toEqual(['main','stale-remote','base']);
+  });
 });

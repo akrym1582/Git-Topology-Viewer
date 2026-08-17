@@ -82,6 +82,10 @@ try {
   }
   await page.getByRole('button', { name: '12 件のコミットを展開' }).waitFor();
   await page.getByText('リモートブランチ').click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'setRefVisibility' || request.tags !== true || request.remotes !== true) {
+    throw new Error(`Unexpected ref visibility request: ${JSON.stringify(request)}`);
+  }
   await page.locator('.ref.remoteBranch').first().waitFor();
   const remoteLabels = await page.locator('.ref.remoteBranch').evaluateAll(elements => elements.map(element => {
     const transform = element.getAttribute('transform') ?? '';
