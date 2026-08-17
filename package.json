@@ -53,7 +53,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "smoke:webview": "npm run build && node test/smoke/webview-smoke.mjs",
-    "smoke:install": "playwright install --with-deps chromium"
+    "smoke:install": "playwright install chromium"
   },
   "devDependencies": {
     "@playwright/test": "1.55.1",
