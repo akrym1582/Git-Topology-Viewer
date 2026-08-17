@@ -157,9 +157,26 @@ try {
 
   // Mutating operations remain explicit extension-host intents.
   await page.locator('.ref.localBranch').nth(1).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Compare Selected Refs', exact: true }).waitFor();
+  if (await page.getByRole('menuitem', { name: 'Checkout', exact: true }).count()) {
+    throw new Error('Single-ref Git actions should be hidden for a two-ref context menu');
+  }
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'contextMenu' || request.selectedRefs?.length !== 2) {
+    throw new Error(`Unexpected pair context-menu request: ${JSON.stringify(request)}`);
+  }
+  await page.getByRole('menuitem', { name: 'Compare Selected Refs', exact: true }).click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'runContextCommand' || request.command !== 'compareSelected' || request.selectedRefs?.length !== 2) {
+    throw new Error(`Unexpected pair comparison request: ${JSON.stringify(request)}`);
+  }
+
+  // Returning to one selected ref restores branch-specific actions.
+  await page.locator('.ref.localBranch').nth(1).click();
+  await page.locator('.ref.localBranch').nth(1).click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Checkout', exact: true }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
-  if (request?.type !== 'runContextCommand' || request.command !== 'checkout') {
+  if (request?.type !== 'runContextCommand' || request.command !== 'checkout' || request.selectedRefs?.length !== 1) {
     throw new Error(`Unexpected checkout request: ${JSON.stringify(request)}`);
   }
 
@@ -186,9 +203,13 @@ try {
   }
   await page.screenshot({ path: join(imageDir, 'smoke-branch-log.png'), fullPage: true });
 
-  // Keep the expanded branch actions visible in the captured visual artifact.
+  // Keep the two-ref comparison actions visible in the captured visual artifact.
+  await page.locator('.ref.localBranch').nth(1).click({ modifiers: ['Control'] });
   await page.locator('.ref.localBranch').nth(1).click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Show Merge Base' }).waitFor();
+  await page.getByRole('menuitem', { name: 'Compare Selected Refs', exact: true }).waitFor();
+  if (await page.getByRole('menuitem', { name: 'Checkout', exact: true }).count()) {
+    throw new Error('The visual comparison context menu should not show Checkout');
+  }
   await page.screenshot({ path: join(imageDir, 'smoke-branch-comparison-context-menu.png'), fullPage: true });
 
   await mkdir(resolve(screenshot, '..'), { recursive: true });

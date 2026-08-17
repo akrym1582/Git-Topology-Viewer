@@ -61,8 +61,8 @@ export class TopologyPanel {
         else this.expanded.add(message.rangeId);
         this.sendGraph();
       }
-      if (message.type === 'contextMenu') this.sendContextMenu(message.nodeId, message.x, message.y);
-      if (message.type === 'runContextCommand') await this.runContextCommand(message.command, message.nodeId);
+      if (message.type === 'contextMenu') this.sendContextMenu(message.nodeId, message.selectedRefs, message.x, message.y);
+      if (message.type === 'runContextCommand') await this.runContextCommand(message.command, message.nodeId, message.selectedRefs);
       if (message.type === 'compareRefs') {
         this.assertKnownRef(message.left);
         this.assertKnownRef(message.right);
@@ -85,8 +85,14 @@ export class TopologyPanel {
     } catch (e) { this.post({ type: 'error', message: e instanceof Error ? e.message : String(e) }); }
   }
 
-  private sendContextMenu(nodeId: string, x: number, y: number): void {
+  private sendContextMenu(nodeId: string, selectedRefs: string[], x: number, y: number): void {
     const ref = this.knownRef(nodeId);
+    const selection = selectedRefs.map(candidate => this.knownRef(candidate));
+    if (!selection.some(candidate => candidate.fullName === ref.fullName)) throw new Error('The context-menu selection is stale. Refresh the viewer and try again.');
+    if (selection.length === 2) {
+      this.post({ type: 'contextMenuItems', nodeId, selectedRefs: selection.map(candidate => candidate.fullName), x, y, items: this.menuPolicy.comparisonItems() });
+      return;
+    }
     const local = ref.type === 'localBranch';
     const hasCurrent = Boolean(this.currentBranch && this.currentBranch !== ref.name);
     const hasBase = Boolean(this.compareBase && this.compareBase !== ref.fullName);
@@ -106,10 +112,18 @@ export class TopologyPanel {
     ];
     const status = this.branchStatuses.find(candidate => candidate.ref === ref.fullName);
     items.push(...this.menuPolicy.branchItems({ ref, currentBranch: this.currentBranch, hasUpstream: Boolean(status?.upstream), operation: { type: 'normal', hasConflicts: false } }));
-    this.post({ type: 'contextMenuItems', nodeId, x, y, items });
+    this.post({ type: 'contextMenuItems', nodeId, selectedRefs: [ref.fullName], x, y, items });
   }
-  private async runContextCommand(command: GraphMenuCommand, nodeId: string): Promise<void> {
+  private async runContextCommand(command: GraphMenuCommand, nodeId: string, selectedRefs?: string[]): Promise<void> {
     const ref = this.knownRef(nodeId);
+    if (command === 'compareSelected' || command === 'compareSelectedSnapshots' || command === 'showSelectedMergeBase') {
+      if (!selectedRefs || selectedRefs.length !== 2) throw new Error('Select exactly two refs before using a comparison menu action.');
+      const selection = selectedRefs.map(candidate => this.knownRef(candidate));
+      if (!selection.some(candidate => candidate.fullName === ref.fullName)) throw new Error('The comparison selection is stale. Refresh the viewer and try again.');
+      const result = await this.compare(selection[0].fullName, selection[1].fullName, command === 'compareSelectedSnapshots' ? 'snapshot' : 'divergence');
+      if (command === 'showSelectedMergeBase') { this.mergeBaseIds = result.mergeBases; this.sendGraph(); }
+      return;
+    }
     const comparisonBase = this.compareBase && this.compareBase !== ref.fullName
       ? this.compareBase : this.currentBranch ? `refs/heads/${this.currentBranch}` : undefined;
     if (command === 'selectCompareBase') { this.compareBase = ref.fullName; await this.workspaceState.update('gitTopology.compareBase', ref.fullName); this.sendGraph(); return; }
@@ -137,9 +151,9 @@ export class TopologyPanel {
     if (command === 'copyName') await vscode.env.clipboard.writeText(ref.name);
     if (command === 'copyHash') await vscode.env.clipboard.writeText(ref.commitId);
   }
-  private async compare(left: string, right?: string) {
+  private async compare(left: string, right?: string, mode: 'divergence' | 'snapshot' = 'divergence') {
     if (!right) throw new Error('Select a compare base or check out a local branch first.');
-    const result = await this.diff.compare(left, right, 'divergence');
+    const result = await this.diff.compare(left, right, mode);
     this.mergeBaseIds = result.mergeBases;
     this.post({ type: 'comparison', payload: result });
     this.sendGraph();

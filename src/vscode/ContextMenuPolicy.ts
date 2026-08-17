@@ -6,6 +6,15 @@ export interface RepositoryOperationState { type: GitOperationState; hasConflict
 export interface MenuContext { ref: GitRef; currentBranch?: string; hasUpstream: boolean; operation: RepositoryOperationState }
 
 export class ContextMenuPolicy {
+  comparisonItems(): GraphContextMenuItem[] {
+    const item = (command: GraphMenuCommand, label: string): GraphContextMenuItem => ({ command, label, group: 'compare', enabled: true, visible: true });
+    return [
+      item('compareSelected', 'Compare Selected Refs'),
+      item('compareSelectedSnapshots', 'Compare Current Snapshots'),
+      item('showSelectedMergeBase', 'Show Merge Base')
+    ];
+  }
+
   branchItems(context: MenuContext): GraphContextMenuItem[] {
     const { ref, currentBranch, hasUpstream, operation } = context;
     const local = ref.type === 'localBranch';

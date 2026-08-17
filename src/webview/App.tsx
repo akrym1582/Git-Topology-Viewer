@@ -3,7 +3,7 @@ import { BranchComparison, CommitDetails, GitRef, GraphPayload, RefLog, ViewMode
 import { GraphContextMenuItem } from '../vscode/messages';
 import { vscode } from './vscode';
 
-interface ContextMenuState { ref: GitRef; x: number; y: number; items: GraphContextMenuItem[] }
+interface ContextMenuState { ref: GitRef; selectedRefs: string[]; x: number; y: number; items: GraphContextMenuItem[] }
 
 export function App() {
   const dataRef = React.useRef<GraphPayload>();
@@ -29,7 +29,7 @@ export function App() {
       if (event.data.type === 'commitDetails') setCommitDetails(event.data.payload);
       if (event.data.type === 'error') setError(event.data.message);
       if (event.data.type === 'operationResult') setNotice(event.data.message);
-      if (event.data.type === 'contextMenuItems') { const ref = dataRef.current?.refs.find(item => item.fullName === event.data.nodeId); if (ref) setMenu({ ref, x: event.data.x, y: event.data.y, items: event.data.items }); }
+      if (event.data.type === 'contextMenuItems') { const ref = dataRef.current?.refs.find(item => item.fullName === event.data.nodeId); if (ref) setMenu({ ref, selectedRefs: event.data.selectedRefs ?? [ref.fullName], x: event.data.x, y: event.data.y, items: event.data.items }); }
       if (event.data.type === 'focusRef' && event.data.commitId) document.querySelector(`[data-commit="${event.data.commitId}"]`)?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
     };
     addEventListener('message', receive);
@@ -70,15 +70,16 @@ export function App() {
   const openContextMenu = (ref: GitRef, event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    if (!selected.some(item => item.fullName === ref.fullName)) setSelected([ref]);
-    vscode.postMessage({ type: 'contextMenu', nodeType: ref.type === 'localBranch' ? 'branch' : ref.type, nodeId: ref.fullName, x: Math.min(event.clientX, window.innerWidth - 260), y: Math.min(event.clientY, window.innerHeight - 360) });
+    const selection = selected.some(item => item.fullName === ref.fullName) ? selected : [ref];
+    if (selection !== selected) setSelected(selection);
+    vscode.postMessage({ type: 'contextMenu', nodeType: ref.type === 'localBranch' ? 'branch' : ref.type, nodeId: ref.fullName, selectedRefs: selection.map(item => item.fullName), x: Math.min(event.clientX, window.innerWidth - 260), y: Math.min(event.clientY, window.innerHeight - 360) });
   };
 
   return <div className="app" onContextMenu={event => event.preventDefault()}>
     <header><div className="brand"><span className="mark">⌁</span><div><strong>Git Topology</strong><small>{data.repository}</small></div></div><div className="modes">{(['topology', 'compact', 'full'] as ViewMode[]).map(mode => <button key={mode} className={data.mode === mode ? 'active' : ''} onClick={() => vscode.postMessage({ type: 'setViewMode', mode })}>{mode[0].toUpperCase() + mode.slice(1)}</button>)}</div><button className="refresh" onClick={() => vscode.postMessage({ type: 'refresh' })}>↻ Refresh</button></header>
     <div className="filters"><label><input type="checkbox" checked={tags} onChange={event => setTags(event.target.checked)}/> Tags</label><label><input type="checkbox" checked={remotes} onChange={event => setRemotes(event.target.checked)}/> Remote branches</label><label title="Show the latest commit ID below each branch name; expanded ranges show every commit ID"><input type="checkbox" checked={commitIds} onChange={event => setCommitIds(event.target.checked)}/> Commit IDs</label><input className="search" placeholder="Filter branches…" value={filter} onChange={event => setFilter(event.target.value)}/><button className="toggle-inspector" aria-pressed={inspectorVisible} onClick={() => setInspectorVisible(value => !value)}>{inspectorVisible ? 'Hide details' : 'Show details'}</button><span>{data.graph.nodes.filter(node => node.kind === 'commit').length} nodes · {refs.length} refs</span></div>
     <div className={`content ${inspectorVisible ? '' : 'inspector-hidden'}`}><Graph data={data} allowed={allowed} showCommitIds={commitIds} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/>{inspectorVisible && <aside><Inspector selected={selected} refs={refs} comparison={comparison} refLog={refLog} commitDetails={commitDetails} onClose={() => setSelected([])}/></aside>}</div>
-    {menu && <ContextMenu menu={menu} onRun={command => { vscode.postMessage({ type: 'runContextCommand', command, nodeId: menu.ref.fullName }); setMenu(undefined); }}/>}
+    {menu && <ContextMenu menu={menu} onRun={command => { vscode.postMessage({ type: 'runContextCommand', command, nodeId: menu.ref.fullName, selectedRefs: menu.selectedRefs }); setMenu(undefined); }}/>}
     {error && <div className="toast">{error}</div>}
     {notice && <div className="toast success" role="status" onClick={() => setNotice('')}>{notice}</div>}
   </div>;
@@ -174,5 +175,5 @@ function refIcon(ref: GitRef): string { return ref.type === 'tag' ? '◆' : ref.
 function displayRefName(name: string): string { return name.length > 18 ? `${name.slice(0, 17)}…` : name; }
 function ContextMenu({ menu, onRun }: { menu: ContextMenuState; onRun: (command: GraphContextMenuItem['command']) => void }) {
   const groups: GraphContextMenuItem['group'][] = ['compare', 'graph', 'git', 'manage', 'copy'];
-  return <div className="context-menu" role="menu" style={{ left: menu.x, top: menu.y }} onClick={event => event.stopPropagation()}><div className="context-title">{menu.ref.name}</div>{groups.map(group => { const items = menu.items.filter(item => item.visible && item.group === group); return items.length ? <React.Fragment key={group}><div className="context-group">{group}</div>{items.map(item => <button key={item.command} role="menuitem" disabled={!item.enabled} onClick={() => onRun(item.command)}>{item.label}</button>)}</React.Fragment> : null; })}</div>;
+  return <div className="context-menu" role="menu" style={{ left: menu.x, top: menu.y }} onClick={event => event.stopPropagation()}><div className="context-title">{menu.selectedRefs.length === 2 ? 'Compare selected refs' : menu.ref.name}</div>{groups.map(group => { const items = menu.items.filter(item => item.visible && item.group === group); return items.length ? <React.Fragment key={group}><div className="context-group">{group}</div>{items.map(item => <button key={item.command} role="menuitem" disabled={!item.enabled} onClick={() => onRun(item.command)}>{item.label}</button>)}</React.Fragment> : null; })}</div>;
 }

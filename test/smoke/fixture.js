@@ -146,21 +146,26 @@ setInterval(() => {
   if (requests.length <= handledMenuRequests) return;
   const request = requests[handledMenuRequests++];
   const isCurrent = request.nodeId === 'refs/heads/main';
+  const isPair = request.selectedRefs?.length === 2;
   const item = (command, label, group, enabled = true) => ({ command, label, group, enabled, visible: true });
+  const items = isPair ? [
+    item('compareSelected', 'Compare Selected Refs', 'compare'),
+    item('compareSelectedSnapshots', 'Compare Current Snapshots', 'compare'),
+    item('showSelectedMergeBase', 'Show Merge Base', 'compare')
+  ] : [
+    item('compareCurrent', 'Compare with Current Branch', 'compare', !isCurrent),
+    item('selectCompareBase', 'Select as Compare Base', 'compare'),
+    item('compareWith', 'Compare with…', 'compare'),
+    item('showMergeBase', 'Show Merge Base', 'compare', !isCurrent),
+    item('focus', 'Focus on This Branch', 'graph'),
+    item('related', 'Show Related Branches Only', 'graph'),
+    item('expandCommits', 'Expand Commits', 'graph'),
+    item('collapseCommits', 'Collapse Commits', 'graph'),
+    item('checkout', 'Checkout', 'git', !isCurrent),
+    item('createBranch', 'Create Branch from Here…', 'git'),
+    item('copyName', 'Copy Branch Name', 'copy'), item('copyHash', 'Copy Commit Hash', 'copy')
+  ];
   window.dispatchEvent(new MessageEvent('message', { data: {
-    type: 'contextMenuItems', nodeId: request.nodeId, x: request.x, y: request.y,
-    items: [
-      item('compareCurrent', 'Compare with Current Branch', 'compare', !isCurrent),
-      item('selectCompareBase', 'Select as Compare Base', 'compare'),
-      item('compareWith', 'Compare with…', 'compare'),
-      item('showMergeBase', 'Show Merge Base', 'compare', !isCurrent),
-      item('focus', 'Focus on This Branch', 'graph'),
-      item('related', 'Show Related Branches Only', 'graph'),
-      item('expandCommits', 'Expand Commits', 'graph'),
-      item('collapseCommits', 'Collapse Commits', 'graph'),
-      item('checkout', isCurrent ? 'Checkout' : 'Checkout', 'git', !isCurrent),
-      item('createBranch', 'Create Branch from Here…', 'git'),
-      item('copyName', 'Copy Branch Name', 'copy'), item('copyHash', 'Copy Commit Hash', 'copy')
-    ]
+    type: 'contextMenuItems', nodeId: request.nodeId, selectedRefs: request.selectedRefs, x: request.x, y: request.y, items
   }}));
 }, 20);

@@ -8,7 +8,8 @@ describe('isWebviewRequest', () => {
     expect(isWebviewRequest({ type: 'showCommitDetails', commit: 'f41acde1234567890' })).toBe(true);
     expect(isWebviewRequest({ type: 'switchBranch', ref: 'refs/heads/topic' })).toBe(true);
     expect(isWebviewRequest({ type: 'mergeBranch', ref: 'refs/heads/topic' })).toBe(true);
-    expect(isWebviewRequest({ type: 'contextMenu', nodeType: 'branch', nodeId: 'refs/heads/topic', x: 10, y: 20 })).toBe(true);
+    expect(isWebviewRequest({ type: 'contextMenu', nodeType: 'branch', nodeId: 'refs/heads/topic', selectedRefs: ['refs/heads/main', 'refs/heads/topic'], x: 10, y: 20 })).toBe(true);
+    expect(isWebviewRequest({ type: 'runContextCommand', command: 'compareSelected', nodeId: 'refs/heads/topic', selectedRefs: ['refs/heads/main', 'refs/heads/topic'] })).toBe(true);
     expect(isWebviewRequest({ type: 'runContextCommand', command: 'showMergeBase', nodeId: 'refs/heads/topic' })).toBe(true);
     expect(isWebviewRequest({
       type: 'openDiff', left: 'refs/heads/topic', right: 'refs/heads/main',
@@ -22,6 +23,8 @@ describe('isWebviewRequest', () => {
     expect(isWebviewRequest({ type: 'copy', value: 42 })).toBe(false);
     expect(isWebviewRequest({ type: 'showRefLog', ref: '' })).toBe(false);
     expect(isWebviewRequest({ type: 'showCommitDetails', commit: 'not-a-commit' })).toBe(false);
+    expect(isWebviewRequest({ type: 'contextMenu', nodeType: 'branch', nodeId: 'refs/heads/topic', selectedRefs: [], x: 10, y: 20 })).toBe(false);
+    expect(isWebviewRequest({ type: 'contextMenu', nodeType: 'branch', nodeId: 'refs/heads/topic', selectedRefs: ['refs/heads/main', 'refs/heads/main'], x: 10, y: 20 })).toBe(false);
     expect(isWebviewRequest({ type: 'runContextCommand', command: 'delete', nodeId: 'refs/heads/main' })).toBe(false);
     expect(isWebviewRequest(null)).toBe(false);
   });
