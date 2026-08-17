@@ -19,7 +19,7 @@ describe('BranchRelationBuilder', () => {
     expect(view.edges).toEqual([{ from: 'main', to: 'feature' }]);
   });
 
-  it('keeps both nearest relations after a merge without inventing a branch parent', () => {
+  it('keeps only the nearest relation after a merge', () => {
     const nodes = new Map();
     nodes.set('main', { id: 'main', parents: ['merge'], refs: [ref('main', 'localBranch', 'main')] });
     nodes.set('merge', { id: 'merge', parents: ['trunk', 'feature'], refs: [] });
@@ -30,8 +30,9 @@ describe('BranchRelationBuilder', () => {
     const view = new BranchRelationBuilder().build({ nodes, order: ['main', 'merge', 'feature', 'trunk', 'base'] });
 
     expect(view.edges).toContainEqual({ from: 'main', to: 'feature' });
-    expect(view.edges).toContainEqual({ from: 'main', to: 'base' });
+    expect(view.edges).not.toContainEqual({ from: 'main', to: 'base' });
     expect(view.edges).toContainEqual({ from: 'feature', to: 'base' });
+    expect(view.edges.filter(edge => edge.from === 'main')).toHaveLength(1);
   });
 
   it('groups refs sharing a commit and applies tag and remote visibility', () => {

@@ -14,8 +14,8 @@ export class BranchRelationBuilder {
     }
     const visible = new Set(refsByCommit.keys());
     const ordered = graph.order.filter(id => visible.has(id));
-    const ancestorCache = new Map<string, Set<string>>();
-    const lanes = this.assignLanes(graph, ordered, visible, ancestorCache);
+    const orderIndex = new Map(graph.order.map((id, index) => [id, index]));
+    const lanes = this.assignLanes(graph, ordered, visible, orderIndex);
     const nodes = ordered.map((id, row) => ({
       id,
       refs: refsByCommit.get(id)!,
@@ -24,8 +24,10 @@ export class BranchRelationBuilder {
       x: 70 + lanes.get(id)! * LANE_WIDTH,
       y: TOP_PADDING + row * ROW_HEIGHT
     }));
-    const edges = ordered.flatMap(from => [...this.visibleAncestors(graph, graph.nodes.get(from)!.parents, visible, ancestorCache)]
-      .map(to => ({ from, to })));
+    const edges = ordered.flatMap(from => {
+      const to = this.nearestVisibleAncestor(graph, graph.nodes.get(from)!.parents, visible, orderIndex);
+      return to ? [{ from, to }] : [];
+    });
     return { nodes, edges };
   }
 
@@ -35,7 +37,7 @@ export class BranchRelationBuilder {
       || (ref.type === 'remoteBranch' && visibility.remotes);
   }
 
-  private assignLanes(graph: CommitGraph, order: string[], visible: Set<string>, ancestorCache: Map<string, Set<string>>): Map<string, number> {
+  private assignLanes(graph: CommitGraph, order: string[], visible: Set<string>, orderIndex: Map<string, number>): Map<string, number> {
     const lanes = new Map<string, number>();
     const active: string[] = [];
     for (const id of order) {
@@ -44,31 +46,29 @@ export class BranchRelationBuilder {
       if (lane < 0) lane = active.length;
       lanes.set(id, lane);
       for (let index = 0; index < active.length; index++) if (index !== lane && active[index] === id) active[index] = '';
-      const parents = [...this.visibleAncestors(graph, graph.nodes.get(id)?.parents ?? [], visible, ancestorCache)];
-      active[lane] = parents[0] ?? '';
-      for (let index = 1; index < parents.length; index++) {
-        let parentLane = active.indexOf(parents[index]);
-        if (parentLane < 0) parentLane = active.findIndex(value => !value);
-        if (parentLane < 0) parentLane = active.length;
-        active[parentLane] = parents[index];
-      }
+      active[lane] = this.nearestVisibleAncestor(graph, graph.nodes.get(id)?.parents ?? [], visible, orderIndex) ?? '';
     }
     return lanes;
   }
 
-  private visibleAncestors(graph: CommitGraph, starts: string[], visible: Set<string>, cache: Map<string, Set<string>>): Set<string> {
-    const visit = (id: string): Set<string> => {
-      if (visible.has(id)) return new Set([id]);
-      const cached = cache.get(id);
-      if (cached) return cached;
-      const node = graph.nodes.get(id);
-      const ancestors = new Set<string>();
-      if (node) node.parents.forEach(parent => visit(parent).forEach(ancestor => ancestors.add(ancestor)));
-      cache.set(id, ancestors);
-      return ancestors;
-    };
-    const result = new Set<string>();
-    starts.forEach(start => visit(start).forEach(ancestor => result.add(ancestor)));
-    return result;
+  private nearestVisibleAncestor(graph: CommitGraph, starts: string[], visible: Set<string>, orderIndex: Map<string, number>): string | undefined {
+    const pending = starts.map(id => ({ id, distance: 1 }));
+    const distances = new Map<string, number>();
+    const candidates = new Set<string>();
+    let bestDistance: number | undefined;
+    for (let index = 0; index < pending.length; index++) {
+      const { id, distance } = pending[index];
+      if (bestDistance !== undefined && distance > bestDistance) break;
+      const knownDistance = distances.get(id);
+      if (knownDistance !== undefined && knownDistance <= distance) continue;
+      distances.set(id, distance);
+      if (visible.has(id)) {
+        bestDistance = distance;
+        candidates.add(id);
+        continue;
+      }
+      graph.nodes.get(id)?.parents.forEach(parent => pending.push({ id: parent, distance: distance + 1 }));
+    }
+    return [...candidates].sort((left, right) => (orderIndex.get(left) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(right) ?? Number.MAX_SAFE_INTEGER) || left.localeCompare(right))[0];
   }
 }

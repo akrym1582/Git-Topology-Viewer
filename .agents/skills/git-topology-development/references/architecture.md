@@ -17,10 +17,11 @@ User actions travel back as messages and are handled by the extension host.
 - A `GitRef` points to a commit. The relation view groups visible refs by their
   target commit without claiming that a ref is a DAG vertex.
 - `CommitGraph.nodes` and `CommitGraph.order` describe the source DAG.
-- The relation view contains only visible ref groups. Its edges connect a ref
-  group to the nearest older visible ref groups reachable through the DAG.
-- A merge can produce multiple relation edges. Those edges describe reachability,
-  never an inferred branch-parent hierarchy.
+- The relation view contains only visible ref groups. Each group has at most one
+  edge, to its nearest older visible ref group reachable through the DAG.
+- Merge ancestry can offer several candidates; choose the closest one and use
+  topology order to break ties. The resulting edge describes reachability, never
+  an inferred branch-parent hierarchy.
 - Intermediate commits remain in the immutable source DAG and are never rendered
   or expanded in the relation view.
 

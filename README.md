@@ -7,7 +7,7 @@ A VS Code extension for understanding relationships between branches and tags fr
 ## Features
 
 - A vertical relation graph of local branches and optional tags or remote branches.
-- Edges connect a ref group to the nearest older visible ref groups in the Git DAG.
+- Each ref group has one edge to its nearest older visible ref in the Git DAG.
 - No commit nodes, commit counts, or commit-range expansion controls.
 - Ref comparison with merge base, unique commits, line statistics, and changed files.
 - Compare refs for merge bases, unique commits, line statistics, and changed files.

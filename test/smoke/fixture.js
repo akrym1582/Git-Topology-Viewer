@@ -13,7 +13,7 @@ const graph = {
     { id: commits.develop, lane: 1, row: 3, x: 260, y: 450, refs: [refs[3]] }
   ],
   edges: [
-    { from: commits.main, to: commits.feature }, { from: commits.main, to: commits.release }, { from: commits.feature, to: commits.develop }, { from: commits.develop, to: commits.release }
+    { from: commits.main, to: commits.feature }, { from: commits.feature, to: commits.develop }, { from: commits.develop, to: commits.release }
   ]
 };
 

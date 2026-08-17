@@ -24,7 +24,7 @@ try {
   await page.screenshot({ path: join(imageDir, 'smoke-main-screen.png'), fullPage: true });
 
   if (await page.locator('.node').count() !== 4) throw new Error('Expected four reference groups');
-  if (await page.locator('.edges path').count() !== 4) throw new Error('Expected four branch-relation edges');
+  if (await page.locator('.edges path').count() !== 3) throw new Error('Expected one branch-relation edge per ref group');
   if (await page.locator('.ref.remoteBranch').count()) throw new Error('Remote refs must be hidden until enabled');
   if (await page.locator('.range, .edge-count, .node circle').count()) throw new Error('Commit ranges, commit counts, and commit nodes must not render');
   if (await page.getByText('トポロジー', { exact: true }).count()) throw new Error('Commit view modes must not render');

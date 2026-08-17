@@ -9,9 +9,8 @@ operation UI. Preserve these invariants in every change:
    parent/child hierarchy between branches.
 2. The relation view projects visible `GitRef` groups from commits. Its nodes do
    not claim that one branch was created from another.
-3. A relation edge means that a visible ref is reachable through the DAG without
-   crossing another visible ref. The view must not expose or require commit-range
-   expansion.
+3. Each relation group has at most one edge, to its nearest older visible ref
+   through the DAG. The view must not expose or require commit-range expansion.
 4. Delegate repository semantics to the Git CLI rather than reimplementing them.
 5. Keep the domain layer independent of `vscode`, React, and webview APIs.
 6. Treat repository access as read-only unless a task explicitly requests a write

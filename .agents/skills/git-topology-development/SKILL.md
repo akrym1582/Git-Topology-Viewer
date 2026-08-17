@@ -33,8 +33,8 @@ the Git, domain, VS Code, and webview layers.
 ## Implement relation behavior
 
 - Treat `CommitGraph` as immutable input and create a `RefViewGraph` projection.
-- Group visible refs by target commit, and connect each group to the nearest older
-  visible groups reachable through the DAG. Do not infer which branch was created
+- Group visible refs by target commit, and connect each group to one nearest older
+  visible group reachable through the DAG. Do not infer which branch was created
   from another.
 - Never render, count, or expand intermediate commits in the relation view.
 - Test linear histories, roots, two-parent and octopus merges, truncated parents,
