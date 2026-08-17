@@ -34,7 +34,7 @@ try {
   if (await page.locator('.range, .edge-count, .commit-node').count()) throw new Error('Commit ranges, commit counts, and commit nodes must not render in relation view');
 
   await page.getByRole('tab', { name: '分岐・マージ' }).click();
-  if (await page.locator('.commit-node').count() !== 5) throw new Error('Expected refs and significant commits in branch-and-merge mode');
+  await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5);
   await page.screenshot({ path: join(imageDir, 'smoke-significant-commits.png'), fullPage: true });
   await page.getByRole('tab', { name: 'Git 関係図' }).click();
 
