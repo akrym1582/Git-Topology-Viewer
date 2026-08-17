@@ -2,7 +2,7 @@ import React, { MouseEvent, useEffect, useMemo, useState } from 'react';
 import { BranchComparison, CommitDetails, CommitViewGraph, GitRef, GraphPayload, RefLog, RefViewGraph } from '../domain/models';
 import { GraphContextMenuItem } from '../vscode/messages';
 import { WebviewStrings, webviewStrings } from './i18n';
-import { relationEdgePath } from './relationEdgeRouting';
+import { orderIncomingRelationEdges, relationEdgePath } from './relationEdgeRouting';
 import { vscode } from './vscode';
 
 interface ContextMenuState { ref: GitRef; selectedRefs: string[]; x: number; y: number; items: GraphContextMenuItem[] }
@@ -113,6 +113,10 @@ function Graph({ graph, mode, data, ui, selected, onSelect, onContextMenu }: { g
     const incoming = incomingRelationEdges.get(edge.to) ?? [];
     incoming.push(edge);
     incomingRelationEdges.set(edge.to, incoming);
+  }
+  if (mode === 'relations') {
+    const sourcePositions = new Map(graph.nodes.map(node => [node.id, { x: node.x, y: node.y }]));
+    for (const [target, incoming] of incomingRelationEdges) incomingRelationEdges.set(target, orderIncomingRelationEdges(incoming, sourcePositions));
   }
   const maxX = Math.max(800, ...graph.nodes.map(node => node.x + 300));
   const maxY = Math.max(600, ...graph.nodes.map(node => node.y + 100));
