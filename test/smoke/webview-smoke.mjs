@@ -11,7 +11,8 @@ function startServer() { const server = createServer(async (request, response) =
 
 const server = await startServer();
 const address = server.address();
-const browser = await chromium.launch({ headless: true });
+const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
+const browser = await chromium.launch({ headless: true, ...(executablePath ? { executablePath } : {}) });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 page.setDefaultTimeout(5_000);
 const pageErrors = [];
@@ -33,6 +34,11 @@ try {
   if (await page.locator('.ref.remoteBranch').count()) throw new Error('Remote refs must be hidden until enabled');
   if (await page.locator('.range, .edge-count, .commit-node').count()) throw new Error('Commit ranges, commit counts, and commit nodes must not render in relation view');
 
+  await page.getByRole('tab', { name: '分岐・マージ' }).click();
+  await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5);
+  await page.screenshot({ path: join(imageDir, 'smoke-significant-commits.png'), fullPage: true });
+  await page.getByRole('tab', { name: 'Git 関係図' }).click();
+
   await page.evaluate(() => window.__dispatchGraph(true, false, false));
   await page.getByRole('tab', { name: 'コミット履歴' }).click();
   await page.getByText('コミット履歴を読み込めません。ビューアーを更新してからもう一度試してください。').waitFor();
@@ -51,6 +57,10 @@ try {
   await page.getByText('リモートブランチ').click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'setRefVisibility' || request.tags !== true || request.remotes !== true) throw new Error(`Unexpected ref visibility request: ${JSON.stringify(request)}`);
+  await page.waitForFunction(() => {
+    const transforms = [...document.querySelectorAll('.ref.remoteBranch')].map(element => element.getAttribute('transform'));
+    return transforms.length === 2 && transforms[0] !== transforms[1];
+  });
   const remoteLabels = await page.locator('.ref.remoteBranch').evaluateAll(elements => elements.map(element => element.getAttribute('transform')));
   if (remoteLabels.length !== 2 || remoteLabels[0] === remoteLabels[1]) throw new Error(`Expected stacked remote refs: ${JSON.stringify(remoteLabels)}`);
 
