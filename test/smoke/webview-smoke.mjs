@@ -33,6 +33,15 @@ try {
   if (await page.locator('.ref.remoteBranch').count()) throw new Error('Remote refs must be hidden until enabled');
   if (await page.locator('.range, .edge-count, .commit-node').count()) throw new Error('Commit ranges, commit counts, and commit nodes must not render in relation view');
 
+  await page.evaluate(() => window.__dispatchGraph(true, false, false));
+  await page.getByRole('tab', { name: 'コミット履歴' }).click();
+  await page.getByText('コミット履歴を読み込めません。ビューアーを更新してからもう一度試してください。').waitFor();
+  let request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'refresh') throw new Error(`Expected a refresh for a stale graph payload: ${JSON.stringify(request)}`);
+  if (await page.locator('.commit-node').count()) throw new Error('Stale graph payload must not enter a blank commit-history view');
+  await page.evaluate(() => window.__dispatchGraph());
+  await page.getByText('コミット履歴を読み込めません。ビューアーを更新してからもう一度試してください。').waitFor({ state: 'detached' });
+
   await page.getByRole('button', { name: '詳細を隠す' }).click();
   if (await page.locator('aside').count()) throw new Error('Expected the details pane to be hidden');
   await page.screenshot({ path: join(imageDir, 'smoke-inspector-hidden.png'), fullPage: true });
@@ -40,7 +49,7 @@ try {
   await page.locator('aside').waitFor();
 
   await page.getByText('リモートブランチ').click();
-  let request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'setRefVisibility' || request.tags !== true || request.remotes !== true) throw new Error(`Unexpected ref visibility request: ${JSON.stringify(request)}`);
   const remoteLabels = await page.locator('.ref.remoteBranch').evaluateAll(elements => elements.map(element => element.getAttribute('transform')));
   if (remoteLabels.length !== 2 || remoteLabels[0] === remoteLabels[1]) throw new Error(`Expected stacked remote refs: ${JSON.stringify(remoteLabels)}`);
