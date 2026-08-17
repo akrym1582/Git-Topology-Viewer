@@ -22,6 +22,7 @@ export function App() {
   const [selected, setSelected] = useState<GitRef[]>([]);
   const [menu, setMenu] = useState<ContextMenuState>();
   const [inspectorVisible, setInspectorVisible] = useState(true);
+  const [inspectorWidth, setInspectorWidth] = useState(340);
 
   useEffect(() => {
     const receive = (event: MessageEvent) => {
@@ -54,6 +55,22 @@ export function App() {
 
   if (!data) return <main className="loading"><div className="spinner"/><h2>{ui.readingTopology}</h2>{error && <p className="error">{error}</p>}</main>;
   const refs = data.refs.filter(ref => allowed.has(ref.fullName));
+  const clampInspectorWidth = (width: number) => Math.min(getMaxInspectorWidth(), Math.max(MIN_INSPECTOR_WIDTH, width));
+  const startInspectorResize = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = inspectorWidth;
+    const update = (moveEvent: PointerEvent) => setInspectorWidth(clampInspectorWidth(startWidth + startX - moveEvent.clientX));
+    const stop = () => {
+      window.removeEventListener('pointermove', update);
+      window.removeEventListener('pointerup', stop);
+      window.removeEventListener('pointercancel', stop);
+    };
+    window.addEventListener('pointermove', update);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+  };
+  const adjustInspectorWidth = (delta: number) => setInspectorWidth(width => clampInspectorWidth(width + delta));
   const selectRef = (ref: GitRef, additive: boolean) => {
     setRefLog(undefined); setCommitDetails(undefined); setComparison(undefined);
     if (!additive) { setSelected([ref]); vscode.postMessage({ type: 'showRefLog', ref: ref.fullName }); return; }
@@ -73,11 +90,19 @@ export function App() {
   return <div className="app" onContextMenu={event => event.preventDefault()}>
     <header><div className="brand"><span className="mark">⌁</span><div><strong>Git Topology</strong><small>{data.repository}</small></div></div><div className="modes">{(['topology', 'compact', 'full'] as ViewMode[]).map(mode => <button key={mode} className={data.mode === mode ? 'active' : ''} onClick={() => vscode.postMessage({ type: 'setViewMode', mode })}>{ui[mode]}</button>)}</div><button className="refresh" onClick={() => vscode.postMessage({ type: 'refresh' })}>↻ {ui.refresh}</button></header>
     <div className="filters"><label><input type="checkbox" checked={tags} onChange={event => setTags(event.target.checked)}/> {ui.tags}</label><label><input type="checkbox" checked={remotes} onChange={event => setRemotes(event.target.checked)}/> {ui.remoteBranches}</label><label title={ui.commitIdsTitle}><input type="checkbox" checked={commitIds} onChange={event => setCommitIds(event.target.checked)}/> {ui.commitIds}</label><input className="search" placeholder={ui.filterBranches} value={filter} onChange={event => setFilter(event.target.value)}/><button className="toggle-inspector" aria-pressed={inspectorVisible} onClick={() => setInspectorVisible(value => !value)}>{inspectorVisible ? ui.hideDetails : ui.showDetails}</button><span>{ui.nodesAndRefs(data.graph.nodes.filter(node => node.kind === 'commit').length, refs.length)}</span></div>
-    <div className={`content ${inspectorVisible ? '' : 'inspector-hidden'}`}><Graph data={data} ui={ui} allowed={allowed} showCommitIds={commitIds} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/>{inspectorVisible && <aside><Inspector ui={ui} selected={selected} refs={refs} comparison={comparison} refLog={refLog} commitDetails={commitDetails} onClose={() => setSelected([])}/></aside>}</div>
+    <div className={`content ${inspectorVisible ? '' : 'inspector-hidden'}`} style={inspectorVisible ? { gridTemplateColumns: `minmax(0, 1fr) 9px ${inspectorWidth}px` } : undefined}><Graph data={data} ui={ui} allowed={allowed} showCommitIds={commitIds} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/>{inspectorVisible && <><div className="inspector-resizer" role="separator" aria-orientation="vertical" aria-label="Resize details pane" aria-valuemin={MIN_INSPECTOR_WIDTH} aria-valuemax={getMaxInspectorWidth()} aria-valuenow={inspectorWidth} tabIndex={0} title="Drag to resize details pane" onPointerDown={startInspectorResize} onKeyDown={event => { if (event.key === 'ArrowLeft') { event.preventDefault(); adjustInspectorWidth(16); } if (event.key === 'ArrowRight') { event.preventDefault(); adjustInspectorWidth(-16); } if (event.key === 'Home') { event.preventDefault(); setInspectorWidth(MIN_INSPECTOR_WIDTH); } if (event.key === 'End') { event.preventDefault(); setInspectorWidth(getMaxInspectorWidth()); } }}/><aside><Inspector ui={ui} selected={selected} refs={refs} comparison={comparison} refLog={refLog} commitDetails={commitDetails} onClose={() => setSelected([])}/></aside></>}</div>
     {menu && <ContextMenu ui={ui} menu={menu} onRun={command => { vscode.postMessage({ type: 'runContextCommand', command, nodeId: menu.ref.fullName, selectedRefs: menu.selectedRefs }); setMenu(undefined); }}/>}
     {error && <div className="toast">{error}</div>}
     {notice && <div className="toast success" role="status" onClick={() => setNotice('')}>{notice}</div>}
   </div>;
+}
+
+const MIN_INSPECTOR_WIDTH = 260;
+const MAX_INSPECTOR_WIDTH = 620;
+const MIN_GRAPH_WIDTH = 360;
+
+function getMaxInspectorWidth(): number {
+  return Math.max(MIN_INSPECTOR_WIDTH, Math.min(MAX_INSPECTOR_WIDTH, window.innerWidth - MIN_GRAPH_WIDTH));
 }
 
 function Graph({ data, ui, allowed, showCommitIds, selected, onSelect, onContextMenu }: { data: GraphPayload; ui: WebviewStrings; allowed: Set<string>; showCommitIds: boolean; selected: Set<string>; onSelect: (ref: GitRef, additive: boolean) => void; onContextMenu: (ref: GitRef, event: MouseEvent) => void }) {

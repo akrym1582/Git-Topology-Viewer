@@ -44,6 +44,23 @@ try {
   await page.screenshot({ path: join(imageDir, 'smoke-inspector-hidden.png'), fullPage: true });
   await page.getByRole('button', { name: '詳細を表示' }).click();
   await page.locator('aside').waitFor();
+  await page.locator('.ref.localBranch').first().click();
+  await page.getByRole('heading', { name: 'main' }).waitFor();
+
+  const resizeHandle = page.getByRole('separator', { name: 'Resize details pane' });
+  const initialInspectorWidth = await page.locator('aside').evaluate(element => element.getBoundingClientRect().width);
+  const resizeBox = await resizeHandle.boundingBox();
+  if (!resizeBox) throw new Error('Details pane resize handle is not visible');
+  await page.mouse.move(resizeBox.x + resizeBox.width / 2, resizeBox.y + 180);
+  await page.mouse.down();
+  await page.mouse.move(resizeBox.x - 100, resizeBox.y + 180);
+  await page.mouse.up();
+  const resizedInspectorWidth = await page.locator('aside').evaluate(element => element.getBoundingClientRect().width);
+  if (resizedInspectorWidth <= initialInspectorWidth + 50) throw new Error(`Expected details pane to grow, got ${initialInspectorWidth} -> ${resizedInspectorWidth}`);
+  await resizeHandle.focus();
+  await page.keyboard.press('ArrowRight');
+  const keyboardResizedWidth = await page.locator('aside').evaluate(element => element.getBoundingClientRect().width);
+  if (keyboardResizedWidth >= resizedInspectorWidth) throw new Error('Keyboard resize did not reduce the details pane width');
 
   // Rendering: toolbar, refs, collapsed ranges, and vertical/horizontal SVG edges.
   if (await page.locator('.node').count() !== 6) throw new Error('Expected six commit nodes');

@@ -19,10 +19,14 @@ header { height: 64px; display: flex; align-items: center; padding: 0 22px; bord
 .filters span { margin-left: auto; color: var(--muted); }
 .filters .toggle-inspector { border: 1px solid #384152; border-radius: 5px; background: #171c25; padding: 6px 10px; }
 .filters .toggle-inspector:hover { background: #2c3543; }
-.content { display: grid; grid-template-columns: minmax(0, 1fr) 340px; flex: 1; min-height: 0; }
+.content { display: grid; grid-template-columns: minmax(0, 1fr) 9px 340px; flex: 1; min-height: 0; }
 .content.inspector-hidden { grid-template-columns: minmax(0, 1fr); }
 .canvas { overflow: auto; background-image: radial-gradient(#252b36 1px, transparent 1px); background-size: 24px 24px; }
 .canvas svg { display: block; }
+.inspector-resizer { position: relative; cursor: col-resize; touch-action: none; outline: none; }
+.inspector-resizer::after { content: ''; position: absolute; inset: 0 4px; border-left: 1px solid #292f3a; border-right: 1px solid transparent; }
+.inspector-resizer:hover, .inspector-resizer:focus-visible { background: #263147; }
+.inspector-resizer:focus-visible::after { border-right-color: var(--accent); }
 .edges path { fill: none; stroke: #647189; stroke-width: 2; }
 .node circle { fill: #12161e; stroke: var(--accent); stroke-width: 3; }
 .node .sha { fill: #6f798c; font-family: monospace; font-size: 11px; }
@@ -37,7 +41,7 @@ header { height: 64px; display: flex; align-items: center; padding: 0 22px; bord
 .range { cursor: pointer; }
 .range rect { fill: #1e2932; stroke: #4f786d; stroke-dasharray: 3; }
 .range text { fill: var(--accent); font-size: 11px; }
-aside { background: var(--panel); border-left: 1px solid #292f3a; overflow: auto; }
+aside { min-width: 0; background: var(--panel); overflow: auto; }
 .empty { text-align: center; padding: 90px 40px; color: var(--muted); }
 .empty span { font-size: 36px; color: #536078; }
 .inspector { padding: 25px; position: relative; }
