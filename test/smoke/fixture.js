@@ -9,11 +9,11 @@ const graph = {
   nodes: [
     { id: commits.main, lane: 0, row: 0, x: 70, y: 90, refs: [refs[0]] },
     { id: commits.feature, lane: 1, row: 1, x: 260, y: 210, refs: [refs[2]] },
-    { id: commits.release, lane: 0, row: 2, x: 70, y: 330, refs: [refs[1], refs[4], refs[5]] },
-    { id: commits.develop, lane: 1, row: 3, x: 260, y: 450, refs: [refs[3]] }
+    { id: commits.develop, lane: 1, row: 2, x: 260, y: 330, refs: [refs[3]] },
+    { id: commits.release, lane: 0, row: 3, x: 70, y: 450, refs: [refs[1], refs[4], refs[5]] }
   ],
   edges: [
-    { from: commits.main, to: commits.feature }, { from: commits.feature, to: commits.develop }, { from: commits.develop, to: commits.release }
+    { from: commits.main, to: commits.feature }, { from: commits.feature, to: commits.release }, { from: commits.develop, to: commits.release }
   ]
 };
 
