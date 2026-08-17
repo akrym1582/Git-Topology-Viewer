@@ -10,6 +10,8 @@ export type WebviewRequest =
   | { type: 'contextMenu'; nodeType: 'branch' | 'remoteBranch' | 'tag' | 'commit'; nodeId: string; selectedRefs: string[]; x: number; y: number }
   | { type: 'runContextCommand'; command: GraphMenuCommand; nodeId: string; selectedRefs?: string[] }
   | { type: 'compareRefs'; left: string; right: string; mode: ComparisonMode }
+  | { type: 'showRefLog'; ref: string }
+  | { type: 'showCommitDetails'; commit: string }
   | { type: 'switchBranch'; ref: string }
   | { type: 'mergeBranch'; ref: string }
   | { type: 'openDiff'; left: string; right: string; path: string; oldPath?: string; status: ChangedFileStatus }
@@ -48,6 +50,10 @@ export function isWebviewRequest(value: unknown): value is WebviewRequest {
     case 'compareRefs':
       return isString(value.left) && isString(value.right)
         && (value.mode === 'divergence' || value.mode === 'snapshot');
+    case 'showRefLog':
+      return isString(value.ref);
+    case 'showCommitDetails':
+      return isCommitId(value.commit);
     case 'switchBranch':
     case 'mergeBranch':
       return isString(value.ref);

@@ -9,8 +9,10 @@ A VS Code extension for understanding relationships between branches and tags fr
 - A vertical relation graph of local branches and optional tags or remote branches.
 - Each ref group has one edge to its nearest older visible ref in the Git DAG.
 - No commit nodes, commit counts, or commit-range expansion controls.
+- Select a ref to inspect its history; non-`main` branches start at their merge-base with the nearest relation target, while `main` shows its full history.
 - Ref comparison with merge base, unique commits, line statistics, and changed files.
 - Compare refs for merge bases, unique commits, line statistics, and changed files.
+- Select a history entry to inspect its changed files and line statistics.
 - Read-only branch file diffs opened in VS Code's standard diff editor—no checkout required.
 - Git CLI discovery from VS Code's Git extension, `gitTopology.gitPath`, then `PATH`.
 

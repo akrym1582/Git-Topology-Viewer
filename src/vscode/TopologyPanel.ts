@@ -16,6 +16,7 @@ export class TopologyPanel {
   private static current: TopologyPanel | undefined;
   private compareBase?: string; private mergeBaseIds: string[] = []; private focusedRef?: string;
   private refs: GitRef[] = []; private branchStatuses: BranchStatus[] = []; private graph?: CommitGraph; private currentBranch?: string;
+  private relation?: import('../domain/models').RefViewGraph;
   private refVisibility: RefVisibility = { tags: true, remotes: false };
   private readonly diff: DiffService; private readonly disposables: vscode.Disposable[] = [];
   private readonly operations: BranchOperationService;
@@ -43,7 +44,8 @@ export class TopologyPanel {
   }
   private sendGraph() {
     if (!this.graph) return;
-    this.post({ type: 'graph', payload: { graph: new BranchRelationBuilder().build(this.graph, this.refVisibility), refs: this.refs, branchStatuses: this.branchStatuses, repository: path.basename(this.root), currentBranch: this.currentBranch, compareBase: this.compareBase, mergeBaseIds: this.mergeBaseIds, focusedRef: this.focusedRef } });
+    this.relation = new BranchRelationBuilder().build(this.graph, this.refVisibility);
+    this.post({ type: 'graph', payload: { graph: this.relation, refs: this.refs, branchStatuses: this.branchStatuses, repository: path.basename(this.root), currentBranch: this.currentBranch, compareBase: this.compareBase, mergeBaseIds: this.mergeBaseIds, focusedRef: this.focusedRef } });
   }
   private receiveMessage(message: unknown): void {
     if (!isWebviewRequest(message)) {
@@ -63,6 +65,11 @@ export class TopologyPanel {
         this.assertKnownRef(message.right);
         this.post({ type: 'comparison', payload: await this.diff.compare(message.left, message.right, message.mode) });
       }
+      if (message.type === 'showRefLog') {
+        const ref = this.knownRef(message.ref);
+        this.post({ type: 'refLog', payload: await this.diff.branchLog(ref.fullName, this.historyBase(ref)) });
+      }
+      if (message.type === 'showCommitDetails') this.post({ type: 'commitDetails', payload: await this.diff.commitDetails(message.commit) });
       if (message.type === 'switchBranch') await this.switchBranch(message.ref);
       if (message.type === 'mergeBranch') await this.mergeBranch(message.ref);
       if (message.type === 'openDiff') {
@@ -155,6 +162,15 @@ export class TopologyPanel {
     const ref = this.refs.find(candidate => candidate.fullName === fullName);
     if (!ref) throw new Error(this.t('The selected ref no longer exists. Refresh the viewer and try again.'));
     return ref;
+  }
+  private historyBase(ref: GitRef): string | undefined {
+    if (ref.type === 'localBranch' && ref.name === 'main') return undefined;
+    const target = this.relation?.edges.find(edge => edge.from === ref.commitId)?.to;
+    if (!target) return undefined;
+    const refsAtTarget = this.refs.filter(candidate => candidate.commitId === target);
+    return refsAtTarget.find(candidate => candidate.type === 'localBranch')?.fullName
+      ?? refsAtTarget.find(candidate => candidate.type === 'tag')?.fullName
+      ?? refsAtTarget.find(candidate => candidate.type === 'remoteBranch')?.fullName;
   }
 
   private async switchBranch(ref: string): Promise<void> {

@@ -2,22 +2,23 @@ export interface WebviewStrings {
   relationGraph: string; refresh: string; tags: string; remoteBranches: string; hideDetails: string; showDetails: string; resizeDetails: string;
   nodesAndRefs(nodes: number, refs: number): string; readingRelations: string; zoomControls: string; zoomOut: string; resetZoom: string; zoomIn: string; branchAriaLabel(name: string): string; selectionHint: string;
   selectBranchOrTag: string; selectBranchOrTagHint: string; closeInspector: string; comparingRefs: string; copyName: string; compareWith: string; changesSinceDivergence: string; currentSnapshots: string; compareRefs: string;
-  files: string; comparison: string; mergeBase: string; none: string; onlyLeft: string; onlyRight: string; changedFiles: string; compareSelectedRefs: string;
+  commitHistory: string; branchPoint: string; noCommitsFound: string; showChangesFor(commit: string): string; files: string; added: string; removed: string; noFileChanges: string;
+  comparison: string; mergeBase: string; none: string; onlyLeft: string; onlyRight: string; changedFiles: string; compareSelectedRefs: string;
   contextGroup(group: 'compare' | 'graph' | 'git' | 'manage' | 'copy'): string;
 }
 
 const english: WebviewStrings = {
   relationGraph: 'Git Relations', refresh: 'Refresh', tags: 'Tags', remoteBranches: 'Remote branches', hideDetails: 'Hide details', showDetails: 'Show details', resizeDetails: 'Resize details pane',
   nodesAndRefs: (nodes, refs) => `${nodes} ref groups · ${refs} refs`, readingRelations: 'Reading branch relations…', zoomControls: 'Graph zoom controls', zoomOut: 'Zoom out', resetZoom: 'Reset zoom', zoomIn: 'Zoom in', branchAriaLabel: name => `${name} branch`, selectionHint: 'Click to select · Ctrl/Cmd-click two refs to compare · Right-click for comparison and branch actions',
-  selectBranchOrTag: 'Select a branch or tag', selectBranchOrTagHint: 'Click a ref to compare branches or use branch actions. Ctrl/Cmd-click two refs to compare them.', closeInspector: 'Close inspector', comparingRefs: 'COMPARING REFS', copyName: 'Copy name', compareWith: 'Compare with', changesSinceDivergence: 'Changes since divergence', currentSnapshots: 'Current snapshots', compareRefs: 'Compare refs',
-  files: 'files', comparison: 'Comparison', mergeBase: 'MERGE BASE', none: 'None', onlyLeft: 'only left', onlyRight: 'only right', changedFiles: 'Changed files', compareSelectedRefs: 'Compare selected refs', contextGroup: group => ({ compare: 'Compare', graph: 'Graph', git: 'Git', manage: 'Manage', copy: 'Copy' })[group]
+  selectBranchOrTag: 'Select a branch or tag', selectBranchOrTagHint: 'Click a ref to inspect its branch history or use branch actions. Ctrl/Cmd-click two refs to compare them.', closeInspector: 'Close inspector', comparingRefs: 'COMPARING REFS', copyName: 'Copy name', compareWith: 'Compare with', changesSinceDivergence: 'Changes since divergence', currentSnapshots: 'Current snapshots', compareRefs: 'Compare refs',
+  commitHistory: 'Commit history', branchPoint: 'BRANCH POINT', noCommitsFound: 'No commits found after the branch point.', showChangesFor: commit => `Show changes for ${commit}`, files: 'files', added: 'added', removed: 'removed', noFileChanges: 'No file changes.', comparison: 'Comparison', mergeBase: 'MERGE BASE', none: 'None', onlyLeft: 'only left', onlyRight: 'only right', changedFiles: 'Changed files', compareSelectedRefs: 'Compare selected refs', contextGroup: group => ({ compare: 'Compare', graph: 'Graph', git: 'Git', manage: 'Manage', copy: 'Copy' })[group]
 };
 
 const japanese: WebviewStrings = {
   relationGraph: 'Git 関係図', refresh: '更新', tags: 'タグ', remoteBranches: 'リモートブランチ', hideDetails: '詳細を隠す', showDetails: '詳細を表示', resizeDetails: '詳細ペインの幅を変更',
   nodesAndRefs: (nodes, refs) => `${nodes} 個の参照グループ · ${refs} 個の参照`, readingRelations: 'ブランチの関係を読み込み中…', zoomControls: 'グラフのズーム操作', zoomOut: '縮小', resetZoom: 'ズームをリセット', zoomIn: '拡大', branchAriaLabel: name => `${name} ブランチ`, selectionHint: 'クリックで選択 · Ctrl/Cmd キーを押しながら 2 つの参照をクリックして比較 · 右クリックで比較とブランチ操作を表示',
-  selectBranchOrTag: 'ブランチまたはタグを選択', selectBranchOrTagHint: '参照をクリックするとブランチ比較やブランチ操作を行えます。Ctrl/Cmd キーを押しながら 2 つの参照をクリックすると比較できます。', closeInspector: '詳細ペインを閉じる', comparingRefs: '参照を比較中', copyName: '名前をコピー', compareWith: '比較対象', changesSinceDivergence: '分岐後の変更', currentSnapshots: '現在のスナップショット', compareRefs: '参照を比較',
-  files: 'ファイル', comparison: '比較', mergeBase: 'マージベース', none: 'なし', onlyLeft: '左側のみ', onlyRight: '右側のみ', changedFiles: '変更されたファイル', compareSelectedRefs: '選択した参照を比較', contextGroup: group => ({ compare: '比較', graph: 'グラフ', git: 'Git', manage: '管理', copy: 'コピー' })[group]
+  selectBranchOrTag: 'ブランチまたはタグを選択', selectBranchOrTagHint: '参照をクリックするとブランチ履歴の確認やブランチ操作を行えます。Ctrl/Cmd キーを押しながら 2 つの参照をクリックすると比較できます。', closeInspector: '詳細ペインを閉じる', comparingRefs: '参照を比較中', copyName: '名前をコピー', compareWith: '比較対象', changesSinceDivergence: '分岐後の変更', currentSnapshots: '現在のスナップショット', compareRefs: '参照を比較',
+  commitHistory: 'コミット履歴', branchPoint: '分岐点', noCommitsFound: '分岐点以降のコミットはありません。', showChangesFor: commit => `${commit} の変更を表示`, files: 'ファイル', added: '追加', removed: '削除', noFileChanges: 'ファイルの変更はありません。', comparison: '比較', mergeBase: 'マージベース', none: 'なし', onlyLeft: '左側のみ', onlyRight: '右側のみ', changedFiles: '変更されたファイル', compareSelectedRefs: '選択した参照を比較', contextGroup: group => ({ compare: '比較', graph: 'グラフ', git: 'Git', manage: '管理', copy: 'コピー' })[group]
 };
 
 export function webviewStrings(language: string): WebviewStrings { return language.toLowerCase().startsWith('ja') ? japanese : english; }

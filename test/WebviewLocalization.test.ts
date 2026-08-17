@@ -7,6 +7,7 @@ describe('webview localization', () => {
     expect(strings.refresh).toBe('更新');
     expect(strings.relationGraph).toBe('Git 関係図');
     expect(strings.readingRelations).toBe('ブランチの関係を読み込み中…');
+    expect(strings.branchPoint).toBe('分岐点');
   });
 
   it('falls back to English for unsupported display languages', () => {

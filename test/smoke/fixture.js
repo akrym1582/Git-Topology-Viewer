@@ -24,6 +24,9 @@ let handledVisibilityRequests = 0;
 setInterval(() => { const requests = window.__vscodeMessages.filter(message => message.type === 'setRefVisibility'); if (requests.length <= handledVisibilityRequests) return; const request = requests[handledVisibilityRequests++]; dispatchGraph(request.tags, request.remotes); }, 20);
 
 window.__smokeComparison = { type: 'comparison', payload: { left: 'refs/heads/main', right: 'refs/heads/develop', mode: 'divergence', mergeBases: [commits.release], ahead: 12, behind: 3, additions: 532, deletions: 128, files: [{ status: 'M', path: 'src/AuthService.ts' }, { status: 'A', path: 'src/LoginService.ts' }, { status: 'D', path: 'src/OldLoginService.ts' }], onlyLeft: [], onlyRight: [] } };
+window.__smokeMainLog = { type: 'refLog', payload: { ref: 'refs/heads/main', commits: [{ id: commits.main, subject: 'Polish relationship view' }, { id: 'e93b2101234567890', subject: 'Merge feature/login' }] } };
+window.__smokeFeatureLog = { type: 'refLog', payload: { ref: 'refs/heads/feature/login', branchPoint: { id: commits.release, subject: 'Release baseline' }, commits: [{ id: commits.feature, subject: 'Improve login flow' }] } };
+window.__smokeCommitDetails = { type: 'commitDetails', payload: { commit: { id: commits.main, subject: 'Polish relationship view' }, parent: 'e93b2101234567890', additions: 14, deletions: 2, files: [{ status: 'M', path: 'src/AuthService.ts', additions: 10, deletions: 2 }, { status: 'A', path: 'src/LoginService.ts', additions: 4, deletions: 0 }] } };
 
 let handledMenuRequests = 0;
 setInterval(() => {

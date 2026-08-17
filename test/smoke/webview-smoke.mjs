@@ -44,7 +44,23 @@ try {
 
   await page.locator('.ref.localBranch').first().click();
   await page.getByRole('heading', { name: 'main' }).waitFor();
-  if (await page.getByRole('heading', { name: 'コミット履歴' }).count()) throw new Error('Commit history must not render');
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'showRefLog' || request.ref !== 'refs/heads/main') throw new Error(`Unexpected history request: ${JSON.stringify(request)}`);
+  await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeMainLog })));
+  await page.getByRole('heading', { name: 'コミット履歴' }).waitFor();
+  await page.getByRole('button', { name: 'f41acde1234567890 の変更を表示' }).click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'showCommitDetails' || request.commit !== 'f41acde1234567890') throw new Error(`Unexpected commit details request: ${JSON.stringify(request)}`);
+  await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeCommitDetails })));
+  await page.getByText('src/AuthService.ts').waitFor();
+  await page.screenshot({ path: join(imageDir, 'smoke-branch-log.png'), fullPage: true });
+
+  await page.locator('.ref.localBranch').nth(1).click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'showRefLog' || request.ref !== 'refs/heads/feature/login') throw new Error(`Unexpected feature history request: ${JSON.stringify(request)}`);
+  await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeFeatureLog })));
+  await page.getByText('分岐点', { exact: true }).waitFor();
+  await page.getByText('Release baseline', { exact: true }).waitFor();
   const resizeHandle = page.getByRole('separator', { name: '詳細ペインの幅を変更' });
   const initialInspectorWidth = await page.locator('aside').evaluate(element => element.getBoundingClientRect().width);
   const resizeBox = await resizeHandle.boundingBox();
@@ -53,6 +69,7 @@ try {
   const resizedInspectorWidth = await page.locator('aside').evaluate(element => element.getBoundingClientRect().width);
   if (resizedInspectorWidth <= initialInspectorWidth + 50) throw new Error(`Expected details pane to grow, got ${initialInspectorWidth} -> ${resizedInspectorWidth}`);
 
+  await page.locator('.ref.localBranch').first().click();
   await page.locator('.ref.localBranch').first().click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'マージベースを表示' }).waitFor();
   if (await page.getByRole('menuitem', { name: 'コミットを展開' }).count()) throw new Error('Commit expansion actions must not render');

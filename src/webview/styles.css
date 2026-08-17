@@ -78,6 +78,7 @@ aside { min-width: 0; background: var(--panel); overflow: auto; }
 .context-menu button:disabled { color: #747d8e; background: transparent; }
 .context-separator { height: 1px; margin: 5px; background: #394150; }
 .ref-log { margin-top: 16px; }
+.branch-point { display: block; margin-top: 14px; color: var(--accent); font-size: 10px; font-weight: 700; letter-spacing: 1px; }
 .log-entry { width: 100%; display: grid; grid-template-columns: 68px minmax(0, 1fr); gap: 8px; padding: 9px 0; border: 0; border-top: 1px solid #2d3440; background: transparent; text-align: left; }
 .log-entry:hover, .log-entry.selected { background: #202837; }
 .log-entry span { overflow-wrap: anywhere; color: #c9d0dc; }

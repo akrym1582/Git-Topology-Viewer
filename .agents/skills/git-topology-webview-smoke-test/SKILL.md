@@ -39,7 +39,8 @@ Set `SMOKE_SCREENSHOT=/absolute/path.png` to choose another output path.
 
 - Keep `test/smoke/fixture.js` deterministic and representative: ref groups,
   divergence, merge-shaped relations, branch and tag refs, and a comparison
-  containing modified/added/deleted files.
+  containing modified/added/deleted files; include scoped branch history and
+  commit-detail responses when those panes are present.
 - Update fixture messages whenever the serialized extension/webview contract changes.
 - Add assertions for new critical interactions rather than relying only on pixels.
 - Exercise the bundled assets through the local HTTP server; do not import source

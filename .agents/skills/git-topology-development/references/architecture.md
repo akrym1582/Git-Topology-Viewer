@@ -43,8 +43,8 @@ the virtual document provider instead of checking out either ref.
 Requests should be discriminated unions with validated fields. Responses should
 contain plain serializable objects—never `Map`, `Set`, VS Code objects, or class
 instances. The panel owns Git services and sends rendered-model data; the webview
-only sends intent such as changing ref visibility, comparing refs, or opening a
-diff.
+only sends intent such as changing ref visibility, loading a selected ref's
+history or commit details, comparing refs, or opening a diff.
 
 ## Performance guardrails
 
