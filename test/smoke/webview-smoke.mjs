@@ -15,20 +15,23 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
 page.setDefaultTimeout(5_000);
 const pageErrors = [];
-page.on('pageerror', error => pageErrors.push(error.message));
+page.on('pageerror', error => pageErrors.push(error.stack ?? error.message));
 
 try {
   await page.goto(`http://127.0.0.1:${address.port}/test/smoke/fixture.html`, { waitUntil: 'networkidle' });
-  await page.getByText('commerce-platform').waitFor();
+  try {
+    await page.getByText('commerce-platform').waitFor();
+  } catch (error) {
+    if (pageErrors.length) throw new Error(`Webview errors before graph render: ${pageErrors.join('; ')}`);
+    throw error;
+  }
   await mkdir(imageDir, { recursive: true });
   await page.screenshot({ path: join(imageDir, 'smoke-main-screen.png'), fullPage: true });
 
   if (await page.locator('.node').count() !== 4) throw new Error('Expected four reference groups');
   if (await page.locator('.edges path').count() !== 3) throw new Error('Expected one branch-relation edge per ref group');
   if (await page.locator('.ref.remoteBranch').count()) throw new Error('Remote refs must be hidden until enabled');
-  if (await page.locator('.range, .edge-count, .node circle').count()) throw new Error('Commit ranges, commit counts, and commit nodes must not render');
-  if (await page.getByText('トポロジー', { exact: true }).count()) throw new Error('Commit view modes must not render');
-  if (await page.getByText('コミット ID', { exact: true }).count()) throw new Error('Commit controls must not render');
+  if (await page.locator('.range, .edge-count, .commit-node').count()) throw new Error('Commit ranges, commit counts, and commit nodes must not render in relation view');
 
   await page.getByRole('button', { name: '詳細を隠す' }).click();
   if (await page.locator('aside').count()) throw new Error('Expected the details pane to be hidden');
@@ -41,6 +44,16 @@ try {
   if (request?.type !== 'setRefVisibility' || request.tags !== true || request.remotes !== true) throw new Error(`Unexpected ref visibility request: ${JSON.stringify(request)}`);
   const remoteLabels = await page.locator('.ref.remoteBranch').evaluateAll(elements => elements.map(element => element.getAttribute('transform')));
   if (remoteLabels.length !== 2 || remoteLabels[0] === remoteLabels[1]) throw new Error(`Expected stacked remote refs: ${JSON.stringify(remoteLabels)}`);
+
+  await page.getByRole('tab', { name: 'コミット履歴' }).click();
+  await page.locator('.commit-node').first().waitFor();
+  if (await page.locator('.commit-node').count() !== 6) throw new Error('Expected every fixture commit in commit history mode');
+  if (await page.locator('.commit-edges path').count() !== 6) throw new Error('Expected all direct parent edges in commit history mode');
+  const mergeEdges = await page.locator('.commit-edges path').evaluateAll(paths => paths.filter(path => path.getAttribute('d')?.includes('250')).length);
+  if (mergeEdges < 2) throw new Error('Expected visible divergence and merge lanes in commit history mode');
+  await page.screenshot({ path: join(imageDir, 'smoke-commit-history.png'), fullPage: true });
+  await page.getByRole('tab', { name: 'Git 関係図' }).click();
+  await page.locator('.commit-node').waitFor({ state: 'detached' });
 
   await page.locator('.ref.localBranch').first().click();
   await page.getByRole('heading', { name: 'main' }).waitFor();

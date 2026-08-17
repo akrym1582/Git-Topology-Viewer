@@ -1,10 +1,11 @@
 import React, { MouseEvent, useEffect, useMemo, useState } from 'react';
-import { BranchComparison, CommitDetails, GitRef, GraphPayload, RefLog } from '../domain/models';
+import { BranchComparison, CommitDetails, CommitViewGraph, GitRef, GraphPayload, RefLog, RefViewGraph } from '../domain/models';
 import { GraphContextMenuItem } from '../vscode/messages';
 import { WebviewStrings, webviewStrings } from './i18n';
 import { vscode } from './vscode';
 
 interface ContextMenuState { ref: GitRef; selectedRefs: string[]; x: number; y: number; items: GraphContextMenuItem[] }
+type ViewMode = 'relations' | 'commits';
 
 export function App() {
   const ui = webviewStrings(document.documentElement.lang);
@@ -17,6 +18,7 @@ export function App() {
   const [notice, setNotice] = useState('');
   const [tags, setTags] = useState(true);
   const [remotes, setRemotes] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('relations');
   const [selected, setSelected] = useState<GitRef[]>([]);
   const [menu, setMenu] = useState<ContextMenuState>();
   const [inspectorVisible, setInspectorVisible] = useState(true);
@@ -24,17 +26,19 @@ export function App() {
 
   useEffect(() => {
     const receive = (event: MessageEvent) => {
-      if (event.data.type === 'graph') { setData(event.data.payload); dataRef.current = event.data.payload; }
-      if (event.data.type === 'comparison') setComparison(event.data.payload);
-      if (event.data.type === 'refLog') { setRefLog(event.data.payload); setCommitDetails(undefined); }
-      if (event.data.type === 'commitDetails') setCommitDetails(event.data.payload);
-      if (event.data.type === 'error') setError(event.data.message);
-      if (event.data.type === 'operationResult') setNotice(event.data.message);
-      if (event.data.type === 'contextMenuItems') {
-        const ref = dataRef.current?.refs.find(item => item.fullName === event.data.nodeId);
-        if (ref) setMenu({ ref, selectedRefs: event.data.selectedRefs ?? [ref.fullName], x: event.data.x, y: event.data.y, items: event.data.items });
+      const message = event.data;
+      if (!message || typeof message !== 'object' || !('type' in message)) return;
+      if (message.type === 'graph') { setData(message.payload); dataRef.current = message.payload; }
+      if (message.type === 'comparison') setComparison(message.payload);
+      if (message.type === 'refLog') { setRefLog(message.payload); setCommitDetails(undefined); }
+      if (message.type === 'commitDetails') setCommitDetails(message.payload);
+      if (message.type === 'error') setError(message.message);
+      if (message.type === 'operationResult') setNotice(message.message);
+      if (message.type === 'contextMenuItems') {
+        const ref = dataRef.current?.refs.find(item => item.fullName === message.nodeId);
+        if (ref) setMenu({ ref, selectedRefs: message.selectedRefs ?? [ref.fullName], x: message.x, y: message.y, items: message.items });
       }
-      if (event.data.type === 'focusRef' && event.data.commitId) document.querySelector(`[data-ref-node="${event.data.commitId}"]`)?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+      if (message.type === 'focusRef' && message.commitId) document.querySelector(`[data-ref-node="${message.commitId}"]`)?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
     };
     addEventListener('message', receive);
     return () => removeEventListener('message', receive);
@@ -46,7 +50,8 @@ export function App() {
     return () => removeEventListener('click', close);
   }, [menu]);
 
-  const visibleRefs = useMemo(() => data?.graph.nodes.flatMap(node => node.refs) ?? [], [data]);
+  const visibleGraph = viewMode === 'relations' ? data?.graph : data?.commitGraph;
+  const visibleRefs = useMemo(() => visibleGraph?.nodes.flatMap(node => node.refs) ?? [], [visibleGraph]);
   if (!data) return <main className="loading"><div className="spinner"/><h2>{ui.readingRelations}</h2>{error && <p className="error">{error}</p>}</main>;
   const clampInspectorWidth = (width: number) => Math.min(getMaxInspectorWidth(), Math.max(MIN_INSPECTOR_WIDTH, width));
   const startInspectorResize = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -79,9 +84,9 @@ export function App() {
   };
 
   return <div className="app" onContextMenu={event => event.preventDefault()}>
-    <header><div className="brand"><span className="mark">⌁</span><div><strong>{ui.relationGraph}</strong><small>{data.repository}</small></div></div><button className="refresh" onClick={() => vscode.postMessage({ type: 'refresh' })}>↻ {ui.refresh}</button></header>
-    <div className="filters"><label><input type="checkbox" checked={tags} onChange={event => setRefVisibility(event.target.checked, remotes)}/> {ui.tags}</label><label><input type="checkbox" checked={remotes} onChange={event => setRefVisibility(tags, event.target.checked)}/> {ui.remoteBranches}</label><button className="toggle-inspector" aria-pressed={inspectorVisible} onClick={() => setInspectorVisible(value => !value)}>{inspectorVisible ? ui.hideDetails : ui.showDetails}</button><span>{ui.nodesAndRefs(data.graph.nodes.length, visibleRefs.length)}</span></div>
-    <div className={`content ${inspectorVisible ? '' : 'inspector-hidden'}`} style={inspectorVisible ? { gridTemplateColumns: `minmax(0, 1fr) 9px ${inspectorWidth}px` } : undefined}><Graph data={data} ui={ui} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/>{inspectorVisible && <><div className="inspector-resizer" role="separator" aria-orientation="vertical" aria-label={ui.resizeDetails} aria-valuemin={MIN_INSPECTOR_WIDTH} aria-valuemax={getMaxInspectorWidth()} aria-valuenow={inspectorWidth} tabIndex={0} title={ui.resizeDetails} onPointerDown={startInspectorResize} onKeyDown={event => { if (event.key === 'ArrowLeft') { event.preventDefault(); adjustInspectorWidth(16); } if (event.key === 'ArrowRight') { event.preventDefault(); adjustInspectorWidth(-16); } if (event.key === 'Home') { event.preventDefault(); setInspectorWidth(MIN_INSPECTOR_WIDTH); } if (event.key === 'End') { event.preventDefault(); setInspectorWidth(getMaxInspectorWidth()); } }}/><aside><Inspector ui={ui} selected={selected} refs={visibleRefs} comparison={comparison} refLog={refLog} commitDetails={commitDetails} onClose={() => setSelected([])}/></aside></>}</div>
+    <header><div className="brand"><span className="mark">⌁</span><div><strong>{viewMode === 'relations' ? ui.relationGraph : ui.commitGraph}</strong><small>{data.repository}</small></div></div><div className="modes" role="tablist"><button role="tab" aria-selected={viewMode === 'relations'} className={viewMode === 'relations' ? 'active' : ''} onClick={() => setViewMode('relations')}>{ui.relationGraph}</button><button role="tab" aria-selected={viewMode === 'commits'} className={viewMode === 'commits' ? 'active' : ''} onClick={() => setViewMode('commits')}>{ui.commitGraph}</button></div><button className="refresh" onClick={() => vscode.postMessage({ type: 'refresh' })}>↻ {ui.refresh}</button></header>
+    <div className="filters"><label><input type="checkbox" checked={tags} onChange={event => setRefVisibility(event.target.checked, remotes)}/> {ui.tags}</label><label><input type="checkbox" checked={remotes} onChange={event => setRefVisibility(tags, event.target.checked)}/> {ui.remoteBranches}</label><button className="toggle-inspector" aria-pressed={inspectorVisible} onClick={() => setInspectorVisible(value => !value)}>{inspectorVisible ? ui.hideDetails : ui.showDetails}</button><span>{viewMode === 'relations' ? ui.nodesAndRefs(data.graph.nodes.length, visibleRefs.length) : ui.commitsAndRefs(data.commitGraph.nodes.length, visibleRefs.length)}</span></div>
+    <div className={`content ${inspectorVisible ? '' : 'inspector-hidden'}`} style={inspectorVisible ? { gridTemplateColumns: `minmax(0, 1fr) 9px ${inspectorWidth}px` } : undefined}><Graph graph={visibleGraph!} mode={viewMode} data={data} ui={ui} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/>{inspectorVisible && <><div className="inspector-resizer" role="separator" aria-orientation="vertical" aria-label={ui.resizeDetails} aria-valuemin={MIN_INSPECTOR_WIDTH} aria-valuemax={getMaxInspectorWidth()} aria-valuenow={inspectorWidth} tabIndex={0} title={ui.resizeDetails} onPointerDown={startInspectorResize} onKeyDown={event => { if (event.key === 'ArrowLeft') { event.preventDefault(); adjustInspectorWidth(16); } if (event.key === 'ArrowRight') { event.preventDefault(); adjustInspectorWidth(-16); } if (event.key === 'Home') { event.preventDefault(); setInspectorWidth(MIN_INSPECTOR_WIDTH); } if (event.key === 'End') { event.preventDefault(); setInspectorWidth(getMaxInspectorWidth()); } }}/><aside><Inspector ui={ui} selected={selected} refs={visibleRefs} comparison={comparison} refLog={refLog} commitDetails={commitDetails} onClose={() => setSelected([])}/></aside></>}</div>
     {menu && <ContextMenu ui={ui} menu={menu} onRun={command => { vscode.postMessage({ type: 'runContextCommand', command, nodeId: menu.ref.fullName, selectedRefs: menu.selectedRefs }); setMenu(undefined); }}/>}
     {error && <div className="toast">{error}</div>}
     {notice && <div className="toast success" role="status" onClick={() => setNotice('')}>{notice}</div>}
@@ -93,22 +98,31 @@ const MAX_INSPECTOR_WIDTH = 620;
 const MIN_GRAPH_WIDTH = 360;
 function getMaxInspectorWidth(): number { return Math.max(MIN_INSPECTOR_WIDTH, Math.min(MAX_INSPECTOR_WIDTH, window.innerWidth - MIN_GRAPH_WIDTH)); }
 
-function Graph({ data, ui, selected, onSelect, onContextMenu }: { data: GraphPayload; ui: WebviewStrings; selected: Set<string>; onSelect: (ref: GitRef, additive: boolean) => void; onContextMenu: (ref: GitRef, event: MouseEvent) => void }) {
+function Graph({ graph, mode, data, ui, selected, onSelect, onContextMenu }: { graph: RefViewGraph | CommitViewGraph; mode: ViewMode; data: GraphPayload; ui: WebviewStrings; selected: Set<string>; onSelect: (ref: GitRef, additive: boolean) => void; onContextMenu: (ref: GitRef, event: MouseEvent) => void }) {
   const [zoom, setZoom] = useState(1);
-  const refLayouts = new Map(data.graph.nodes.map(node => [node.id, layoutRefs(node.refs)]));
-  const nodes = new Map(data.graph.nodes.map(node => [node.id, node]));
-  const maxX = Math.max(800, ...data.graph.nodes.map(node => node.x + 300));
-  const maxY = Math.max(600, ...data.graph.nodes.map(node => node.y + 100));
+  const refLayouts = new Map(graph.nodes.map(node => [node.id, layoutRefs(node.refs)]));
+  const nodes = new Map(graph.nodes.map(node => [node.id, node]));
+  const maxX = Math.max(800, ...graph.nodes.map(node => node.x + 300));
+  const maxY = Math.max(600, ...graph.nodes.map(node => node.y + 100));
   const updateZoom = (next: number) => setZoom(Math.min(2, Math.max(0.5, Math.round(next * 10) / 10)));
   return <section className="canvas" onWheel={event => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); updateZoom(zoom + (event.deltaY < 0 ? 0.1 : -0.1)); } }}>
     <div className="zoom-controls" aria-label={ui.zoomControls}><button aria-label={ui.zoomOut} title={ui.zoomOut} disabled={zoom <= 0.5} onClick={() => updateZoom(zoom - 0.1)}>−</button><button aria-label={ui.resetZoom} title={ui.resetZoom} onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button><button aria-label={ui.zoomIn} title={ui.zoomIn} disabled={zoom >= 2} onClick={() => updateZoom(zoom + 0.1)}>＋</button></div>
-    <svg width={maxX * zoom} height={maxY * zoom}><g transform={`scale(${zoom})`}><g className="edges">{data.graph.edges.map(edge => { const from = nodes.get(edge.from); const to = nodes.get(edge.to); if (!from || !to) return null; const fromAnchor = refLayouts.get(from.id)!.anchor; const toAnchor = refLayouts.get(to.id)!.anchor; const fromX = from.x + fromAnchor.x; const fromY = from.y + fromAnchor.y; const toX = to.x + toAnchor.x; const toY = to.y + toAnchor.y; return <path key={`${edge.from}:${edge.to}`} d={`M ${fromX} ${fromY} C ${fromX} ${(fromY + toY) / 2}, ${toX} ${(fromY + toY) / 2}, ${toX} ${toY}`}/>; })}</g>{data.graph.nodes.map(node => { const layout = refLayouts.get(node.id)!; return <g key={node.id} data-ref-node={node.id} className="node" transform={`translate(${node.x},${node.y})`}>{layout.refs.length > 1 && <g className="ref-connectors" aria-hidden="true">{layout.refs.slice(1).map(({ ref, position }) => <path key={ref.fullName} data-ref-connector={ref.fullName} d={`M ${layout.anchor.x} ${layout.anchor.y} V ${position.y - REF_ROW_GAP / 2} H ${position.x + REF_ICON_CENTER_X} V ${position.y + REF_ANCHOR_Y}`}/>)}</g>}{layout.refs.map(({ ref, position }) => <g key={ref.fullName} className={`ref ${ref.type} ${selected.has(ref.fullName) ? 'selected' : ''}`} transform={`translate(${position.x},${position.y})`} onClick={event => { event.stopPropagation(); onSelect(ref, event.ctrlKey || event.metaKey); }} onContextMenu={event => onContextMenu(ref, event)} role="button" aria-label={ui.branchAriaLabel(ref.name)}><rect width={REF_WIDTH} height={REF_HEIGHT} rx="0"/><text className="ref-icon" x="14" y={REF_TEXT_Y} textAnchor="middle">{refIcon(ref)}</text><text className="ref-name" x="24" y={REF_TEXT_Y}>{displayRefName(ref.name)}{branchState(data, ref)}</text></g>)}</g>; })}</g></svg><div className="selection-hint">{ui.selectionHint}</div></section>;
+    <svg width={maxX * zoom} height={maxY * zoom}><g transform={`scale(${zoom})`}><g className={`edges ${mode === 'commits' ? 'commit-edges' : ''}`}>{graph.edges.map(edge => { const from = nodes.get(edge.from); const to = nodes.get(edge.to); if (!from || !to) return null; const fromAnchor = mode === 'relations' ? refLayouts.get(from.id)!.anchor : { x: 0, y: 0 }; const toAnchor = mode === 'relations' ? refLayouts.get(to.id)!.anchor : { x: 0, y: 0 }; const fromX = from.x + fromAnchor.x; const fromY = from.y + fromAnchor.y; const toX = to.x + toAnchor.x; const toY = to.y + toAnchor.y; return <path key={`${edge.from}:${edge.to}`} d={`M ${fromX} ${fromY} C ${fromX} ${(fromY + toY) / 2}, ${toX} ${(fromY + toY) / 2}, ${toX} ${toY}`}/>; })}</g>{graph.nodes.map(node => { const layout = refLayouts.get(node.id)!; if (mode === 'commits') return <CommitNode key={node.id} node={node} data={data} ui={ui} selected={selected} onSelect={onSelect} onContextMenu={onContextMenu}/>; return <g key={node.id} data-ref-node={node.id} className="node" transform={`translate(${node.x},${node.y})`}>{layout.refs.length > 1 && <g className="ref-connectors" aria-hidden="true">{layout.refs.slice(1).map(({ ref, position }) => <path key={ref.fullName} data-ref-connector={ref.fullName} d={`M ${layout.anchor.x} ${layout.anchor.y} V ${position.y - REF_ROW_GAP / 2} H ${position.x + REF_ICON_CENTER_X} V ${position.y + REF_ANCHOR_Y}`}/>)}</g>}{layout.refs.map(({ ref, position }) => <RefNode key={ref.fullName} gitRef={ref} position={position} data={data} ui={ui} selected={selected} onSelect={onSelect} onContextMenu={onContextMenu}/>)}</g>; })}</g></svg><div className="selection-hint">{ui.selectionHint}</div></section>;
 }
 
 const REF_WIDTH = 150; const REF_HEIGHT = 28; const REF_ROW_GAP = 6; const REF_ICON_CENTER_X = 14; const REF_TEXT_Y = 19; const REF_ANCHOR_Y = REF_TEXT_Y - 5;
 const REF_TYPES: GitRef['type'][] = ['tag', 'localBranch', 'remoteBranch'];
 interface RefLayout { refs: Array<{ ref: GitRef; position: { x: number; y: number } }>; anchor: { x: number; y: number } }
 function layoutRefs(refs: GitRef[]): RefLayout { const rows = REF_TYPES.flatMap(type => refs.filter(ref => ref.type === type)); const firstRowY = -((rows.length * REF_HEIGHT) + ((rows.length - 1) * REF_ROW_GAP)) / 2; const positionedRefs = rows.map((ref, rowIndex) => ({ ref, position: { x: -REF_ICON_CENTER_X, y: firstRowY + rowIndex * (REF_HEIGHT + REF_ROW_GAP) } })); const anchor = positionedRefs[0] ? { x: positionedRefs[0].position.x + REF_ICON_CENTER_X, y: positionedRefs[0].position.y + REF_ANCHOR_Y } : { x: 0, y: 0 }; return { refs: positionedRefs, anchor }; }
+
+function CommitNode({ node, data, ui, selected, onSelect, onContextMenu }: { node: CommitViewGraph['nodes'][number]; data: GraphPayload; ui: WebviewStrings; selected: Set<string>; onSelect: (ref: GitRef, additive: boolean) => void; onContextMenu: (ref: GitRef, event: MouseEvent) => void }) {
+  const refs = layoutRefs(node.refs).refs;
+  return <g data-ref-node={node.id} className="node commit-node" transform={`translate(${node.x},${node.y})`}><circle r="7"/><text className="commit-id" x="15" y="4">{node.id.slice(0, 8)}</text>{refs.map(({ ref, position }) => <RefNode key={ref.fullName} gitRef={ref} position={{ x: position.x + 16, y: position.y - 22 }} data={data} ui={ui} selected={selected} onSelect={onSelect} onContextMenu={onContextMenu}/>)}</g>;
+}
+
+function RefNode({ gitRef, position, data, ui, selected, onSelect, onContextMenu }: { gitRef: GitRef; position: { x: number; y: number }; data: GraphPayload; ui: WebviewStrings; selected: Set<string>; onSelect: (ref: GitRef, additive: boolean) => void; onContextMenu: (ref: GitRef, event: MouseEvent) => void }) {
+  return <g className={`ref ${gitRef.type} ${selected.has(gitRef.fullName) ? 'selected' : ''}`} transform={`translate(${position.x},${position.y})`} onClick={event => { event.stopPropagation(); onSelect(gitRef, event.ctrlKey || event.metaKey); }} onContextMenu={event => onContextMenu(gitRef, event)} role="button" aria-label={ui.branchAriaLabel(gitRef.name)}><rect width={REF_WIDTH} height={REF_HEIGHT} rx="0"/><text className="ref-icon" x="14" y={REF_TEXT_Y} textAnchor="middle">{refIcon(gitRef)}</text><text className="ref-name" x="24" y={REF_TEXT_Y}>{displayRefName(gitRef.name)}{branchState(data, gitRef)}</text></g>;
+}
 
 function Inspector({ ui, selected, refs, comparison, refLog, commitDetails, onClose }: { ui: WebviewStrings; selected: GitRef[]; refs: GitRef[]; comparison?: BranchComparison; refLog?: RefLog; commitDetails?: CommitDetails; onClose: () => void }) { const primary = selected[0]; const [other, setOther] = useState(''); const [mode, setMode] = useState<'divergence' | 'snapshot'>('divergence'); useEffect(() => setOther(selected[1]?.fullName ?? refs.find(ref => ref.fullName !== primary?.fullName)?.fullName ?? ''), [primary, selected[1], refs]); if (!primary) return <div className="empty"><span>⑂</span><h3>{ui.selectBranchOrTag}</h3><p>{ui.selectBranchOrTagHint}</p></div>; const compare = () => vscode.postMessage({ type: 'compareRefs', left: primary.fullName, right: other, mode }); return <div className="inspector"><button className="close" aria-label={ui.closeInspector} title={ui.closeInspector} onClick={onClose}>×</button><small>{selected.length === 2 ? ui.comparingRefs : primary.type.replace(/([A-Z])/g, ' $1').toUpperCase()}</small><h2>{selected.length === 2 ? `${primary.name} ↔ ${selected[1].name}` : primary.name}</h2><div className="actions"><button onClick={() => vscode.postMessage({ type: 'copy', value: primary.name })}>{ui.copyName}</button></div>{selected.length === 1 && refLog?.ref === primary.fullName ? <RefLogView ui={ui} value={refLog} details={commitDetails} onSelectCommit={commit => vscode.postMessage({ type: 'showCommitDetails', commit })}/> : <><hr/><h3>{ui.compareWith}</h3><select value={other} onChange={event => setOther(event.target.value)}>{refs.filter(ref => ref.fullName !== primary.fullName).map(ref => <option key={ref.fullName} value={ref.fullName}>{ref.name}</option>)}</select><label className="radio"><input type="radio" checked={mode === 'divergence'} onChange={() => setMode('divergence')}/> {ui.changesSinceDivergence}</label><label className="radio"><input type="radio" checked={mode === 'snapshot'} onChange={() => setMode('snapshot')}/> {ui.currentSnapshots}</label><button className="primary" disabled={!other} onClick={compare}>{ui.compareRefs}</button>{comparison && comparison.left === primary.fullName && <Comparison ui={ui} value={comparison}/>}</>}</div>; }
 function RefLogView({ ui, value, details, onSelectCommit }: { ui: WebviewStrings; value: RefLog; details?: CommitDetails; onSelectCommit: (commit: string) => void }) { const entry = (commit: import('../domain/models').CommitInfo, branchPoint = false) => <React.Fragment key={commit.id}>{branchPoint && <small className="branch-point">{ui.branchPoint}</small>}<button className={`log-entry ${details?.commit.id === commit.id ? 'selected' : ''}`} aria-label={ui.showChangesFor(commit.id)} onClick={() => onSelectCommit(commit.id)}><code>{commit.id.slice(0, 8)}</code><span>{commit.subject}</span></button>{details?.commit.id === commit.id && <CommitFiles ui={ui} value={details}/>}</React.Fragment>; return <div className="ref-log"><hr/><h3>{ui.commitHistory}</h3>{value.branchPoint && entry(value.branchPoint, true)}{value.commits.length === 0 ? <p>{ui.noCommitsFound}</p> : value.commits.map(commit => entry(commit))}</div>; }

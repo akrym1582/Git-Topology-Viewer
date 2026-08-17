@@ -7,6 +7,7 @@ import { DiffService } from '../git/DiffService';
 import { BranchOperationService } from '../git/BranchOperationService';
 import { BranchStatusService } from '../git/BranchStatusService';
 import { BranchRelationBuilder } from '../domain/BranchRelationBuilder';
+import { CommitGraphBuilder } from '../domain/CommitGraphBuilder';
 import { BranchStatus, CommitGraph, GitRef, RefVisibility } from '../domain/models';
 import { GitContentProvider } from './GitContentProvider';
 import { GraphContextMenuItem, GraphMenuCommand, isWebviewRequest, WebviewRequest } from './messages';
@@ -17,6 +18,7 @@ export class TopologyPanel {
   private compareBase?: string; private mergeBaseIds: string[] = []; private focusedRef?: string;
   private refs: GitRef[] = []; private branchStatuses: BranchStatus[] = []; private graph?: CommitGraph; private currentBranch?: string;
   private relation?: import('../domain/models').RefViewGraph;
+  private commitView?: import('../domain/models').CommitViewGraph;
   private refVisibility: RefVisibility = { tags: true, remotes: false };
   private readonly diff: DiffService; private readonly disposables: vscode.Disposable[] = [];
   private readonly operations: BranchOperationService;
@@ -45,7 +47,8 @@ export class TopologyPanel {
   private sendGraph() {
     if (!this.graph) return;
     this.relation = new BranchRelationBuilder().build(this.graph, this.refVisibility);
-    this.post({ type: 'graph', payload: { graph: this.relation, refs: this.refs, branchStatuses: this.branchStatuses, repository: path.basename(this.root), currentBranch: this.currentBranch, compareBase: this.compareBase, mergeBaseIds: this.mergeBaseIds, focusedRef: this.focusedRef } });
+    this.commitView = new CommitGraphBuilder().build(this.graph, this.refVisibility);
+    this.post({ type: 'graph', payload: { graph: this.relation, commitGraph: this.commitView, refs: this.refs, branchStatuses: this.branchStatuses, repository: path.basename(this.root), currentBranch: this.currentBranch, compareBase: this.compareBase, mergeBaseIds: this.mergeBaseIds, focusedRef: this.focusedRef } });
   }
   private receiveMessage(message: unknown): void {
     if (!isWebviewRequest(message)) {

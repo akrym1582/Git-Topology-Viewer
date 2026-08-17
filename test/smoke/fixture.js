@@ -17,11 +17,26 @@ const graph = {
   ]
 };
 
-function dispatchGraph(tags = true, remotes = false) { const visible = nodeRefs => nodeRefs.filter(item => item.type === 'localBranch' || (item.type === 'tag' && tags) || (item.type === 'remoteBranch' && remotes)); const filteredGraph = { ...graph, nodes: graph.nodes.map(node => ({ ...node, refs: visible(node.refs) })).filter(node => node.refs.length) }; window.dispatchEvent(new MessageEvent('message', { data: { type: 'graph', payload: { repository: 'commerce-platform', currentBranch: 'main', branchStatuses: [{ ref: 'refs/heads/main', local: true, remote: false }, { ref: 'refs/heads/feature/login', local: true, remote: false }, { ref: 'refs/heads/develop', local: true, remote: false }], refs, graph: filteredGraph } } })); }
+const commitGraph = {
+  nodes: [
+    { id: commits.main, lane: 0, row: 0, x: 70, y: 70, refs: [refs[0]] },
+    { id: 'e93b2101234567890', lane: 0, row: 1, x: 70, y: 134, refs: [] },
+    { id: commits.feature, lane: 1, row: 2, x: 250, y: 198, refs: [refs[2]] },
+    { id: 'b16a9821234567890', lane: 1, row: 3, x: 250, y: 262, refs: [] },
+    { id: commits.release, lane: 0, row: 4, x: 70, y: 326, refs: [refs[1], refs[4], refs[5]] },
+    { id: commits.develop, lane: 0, row: 5, x: 70, y: 390, refs: [refs[3]] }
+  ],
+  edges: [
+    { from: commits.main, to: 'e93b2101234567890' }, { from: 'e93b2101234567890', to: commits.release }, { from: 'e93b2101234567890', to: commits.feature },
+    { from: commits.feature, to: 'b16a9821234567890' }, { from: 'b16a9821234567890', to: commits.release }, { from: commits.release, to: commits.develop }
+  ]
+};
+
+function dispatchGraph(tags = true, remotes = false) { const visible = nodeRefs => nodeRefs.filter(item => item.type === 'localBranch' || (item.type === 'tag' && tags) || (item.type === 'remoteBranch' && remotes)); const filteredGraph = { ...graph, nodes: graph.nodes.map(node => ({ ...node, refs: visible(node.refs) })).filter(node => node.refs.length) }; const filteredCommitGraph = { ...commitGraph, nodes: commitGraph.nodes.map(node => ({ ...node, refs: visible(node.refs) })) }; window.dispatchEvent(new MessageEvent('message', { data: { type: 'graph', payload: { repository: 'commerce-platform', currentBranch: 'main', branchStatuses: [{ ref: 'refs/heads/main', local: true, remote: false }, { ref: 'refs/heads/feature/login', local: true, remote: false }, { ref: 'refs/heads/develop', local: true, remote: false }], refs, graph: filteredGraph, commitGraph: filteredCommitGraph } } })); }
 setTimeout(() => dispatchGraph(), 50);
 
 let handledVisibilityRequests = 0;
-setInterval(() => { const requests = window.__vscodeMessages.filter(message => message.type === 'setRefVisibility'); if (requests.length <= handledVisibilityRequests) return; const request = requests[handledVisibilityRequests++]; dispatchGraph(request.tags, request.remotes); }, 20);
+setInterval(() => { const requests = window.__vscodeMessages.filter(message => message?.type === 'setRefVisibility'); if (requests.length <= handledVisibilityRequests) return; const request = requests[handledVisibilityRequests++]; dispatchGraph(request.tags, request.remotes); }, 20);
 
 window.__smokeComparison = { type: 'comparison', payload: { left: 'refs/heads/main', right: 'refs/heads/develop', mode: 'divergence', mergeBases: [commits.release], ahead: 12, behind: 3, additions: 532, deletions: 128, files: [{ status: 'M', path: 'src/AuthService.ts' }, { status: 'A', path: 'src/LoginService.ts' }, { status: 'D', path: 'src/OldLoginService.ts' }], onlyLeft: [], onlyRight: [] } };
 window.__smokeMainLog = { type: 'refLog', payload: { ref: 'refs/heads/main', commits: [{ id: commits.main, subject: 'Polish relationship view' }, { id: 'e93b2101234567890', subject: 'Merge feature/login' }] } };
@@ -30,7 +45,7 @@ window.__smokeCommitDetails = { type: 'commitDetails', payload: { commit: { id: 
 
 let handledMenuRequests = 0;
 setInterval(() => {
-  const requests = window.__vscodeMessages.filter(message => message.type === 'contextMenu');
+  const requests = window.__vscodeMessages.filter(message => message?.type === 'contextMenu');
   if (requests.length <= handledMenuRequests) return;
   const request = requests[handledMenuRequests++];
   const isCurrent = request.nodeId === 'refs/heads/main';
