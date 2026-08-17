@@ -1,4 +1,5 @@
 import { CommitGraph, GitRef, RefViewGraph, RefVisibility } from './models';
+import { CommitGraphBuilder } from './CommitGraphBuilder';
 
 const TOP_PADDING = 90;
 const ROW_HEIGHT = 120;
@@ -15,7 +16,7 @@ export class BranchRelationBuilder {
     const visible = new Set(refsByCommit.keys());
     const ordered = graph.order.filter(id => visible.has(id));
     const orderIndex = new Map(graph.order.map((id, index) => [id, index]));
-    const lanes = this.assignLanes(graph, ordered, visible, orderIndex);
+    const lanes = new CommitGraphBuilder().lanesFor(graph);
     const nodes = ordered.map((id, row) => ({
       id,
       refs: refsByCommit.get(id)!,
@@ -35,20 +36,6 @@ export class BranchRelationBuilder {
     return ref.type === 'localBranch'
       || (ref.type === 'tag' && visibility.tags)
       || (ref.type === 'remoteBranch' && visibility.remotes);
-  }
-
-  private assignLanes(graph: CommitGraph, order: string[], visible: Set<string>, orderIndex: Map<string, number>): Map<string, number> {
-    const lanes = new Map<string, number>();
-    const active: string[] = [];
-    for (const id of order) {
-      let lane = active.indexOf(id);
-      if (lane < 0) lane = active.findIndex(value => !value);
-      if (lane < 0) lane = active.length;
-      lanes.set(id, lane);
-      for (let index = 0; index < active.length; index++) if (index !== lane && active[index] === id) active[index] = '';
-      active[lane] = this.nearestVisibleAncestor(graph, graph.nodes.get(id)?.parents ?? [], visible, orderIndex) ?? '';
-    }
-    return lanes;
   }
 
   private nearestVisibleAncestor(graph: CommitGraph, starts: string[], visible: Set<string>, orderIndex: Map<string, number>): string | undefined {

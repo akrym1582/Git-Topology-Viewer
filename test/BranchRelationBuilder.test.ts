@@ -33,6 +33,7 @@ describe('BranchRelationBuilder', () => {
     expect(view.edges).not.toContainEqual({ from: 'main', to: 'base' });
     expect(view.edges).toContainEqual({ from: 'feature', to: 'base' });
     expect(view.edges.filter(edge => edge.from === 'main')).toHaveLength(1);
+    expect(view.nodes.find(node => node.id === 'main')?.lane).not.toBe(view.nodes.find(node => node.id === 'feature')?.lane);
   });
 
   it('groups refs sharing a commit and applies tag and remote visibility', () => {

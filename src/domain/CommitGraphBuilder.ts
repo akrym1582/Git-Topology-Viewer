@@ -7,7 +7,7 @@ const LANE_WIDTH = 180;
 /** Lays out the immutable commit DAG without inferring branch parentage. */
 export class CommitGraphBuilder {
   build(graph: CommitGraph, visibility: RefVisibility = { tags: true, remotes: false }): CommitViewGraph {
-    const lanes = this.assignLanes(graph);
+    const lanes = this.lanesFor(graph);
     const nodes = graph.order.map((id, row) => {
       const node = graph.nodes.get(id)!;
       const lane = lanes.get(id) ?? 0;
@@ -25,6 +25,11 @@ export class CommitGraphBuilder {
       .filter(to => visible.has(to))
       .map(to => ({ from, to })));
     return { nodes, edges };
+  }
+
+  /** Assigns stable lanes from the full DAG so projections retain merge shape. */
+  lanesFor(graph: CommitGraph): Map<string, number> {
+    return this.assignLanes(graph);
   }
 
   private isVisibleRef(ref: GitRef, visibility: RefVisibility): boolean {
