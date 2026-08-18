@@ -37,8 +37,14 @@ try {
   if (await page.locator('.ref.remoteBranch').count()) throw new Error('Remote refs must be hidden until enabled');
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5);
   await page.screenshot({ path: join(imageDir, 'smoke-significant-commits.png'), fullPage: true });
+  const branchCommitsCheckbox = page.getByRole('checkbox', { name: 'ブランチ関係のコミットを表示' });
   const summaryCheckbox = page.getByRole('checkbox', { name: 'コミットを概要表示' });
   const allCommitsCheckbox = page.getByRole('checkbox', { name: 'すべてのコミットを表示' });
+  await branchCommitsCheckbox.uncheck();
+  await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 0 && document.querySelectorAll('.commit-group').length === 0 && document.querySelectorAll('.ref').length === 4);
+  if (await page.locator('.commit-edges path').count()) throw new Error('Ref-only mode must not render commit edges');
+  await branchCommitsCheckbox.check();
+  await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5 && document.querySelectorAll('.commit-group').length === 1);
   await summaryCheckbox.uncheck();
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5 && document.querySelectorAll('.commit-group').length === 0);
   await allCommitsCheckbox.check();
