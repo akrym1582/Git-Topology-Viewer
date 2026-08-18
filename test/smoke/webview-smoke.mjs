@@ -41,6 +41,7 @@ try {
   if (await page.locator('.ref.localBranch.current').count() !== 1) throw new Error('Expected exactly one current branch ref');
   if (!(await page.locator('.ref.localBranch.current').textContent()).includes('[HEAD]')) throw new Error('Expected the current branch HEAD marker');
   if (await page.locator('.ref.remoteBranch').count()) throw new Error('Remote refs must be hidden until enabled');
+  if (await page.locator('aside, .inspector-resizer').count()) throw new Error('Details pane must be hidden without a selection');
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5);
   await page.screenshot({ path: join(imageDir, 'smoke-significant-commits.png'), fullPage: true });
   const branchCommitsCheckbox = page.getByRole('checkbox', { name: 'ブランチ関係のコミットを表示' });
