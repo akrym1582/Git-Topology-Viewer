@@ -330,12 +330,31 @@ try {
     );
 
   await page.locator('.ref.localBranch').first().click();
+  await page.setViewportSize({ width: 1440, height: 480 });
   await page.locator('.ref.localBranch').first().click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'マージベースを表示' }).waitFor();
   if (await page.getByRole('menuitem', { name: 'コミットを展開' }).count())
     throw new Error('Commit expansion actions must not render');
+  const menuBox = await page.locator('.context-menu').boundingBox();
+  const viewport = page.viewportSize();
+  const menuZIndex = await page
+    .locator('.context-menu')
+    .evaluate((element) => getComputedStyle(element).zIndex);
+  if (
+    !menuBox ||
+    !viewport ||
+    menuBox.left < 0 ||
+    menuBox.top < 0 ||
+    menuBox.right > viewport.width ||
+    menuBox.bottom > viewport.height ||
+    menuZIndex !== '1000'
+  )
+    throw new Error(
+      `Context menu is not above and within the viewport: ${JSON.stringify({ menuBox, viewport, menuZIndex })}`,
+    );
   await page.screenshot({ path: join(imageDir, 'smoke-context-menu.png'), fullPage: true });
   await page.getByRole('menuitem', { name: '比較ベースとして選択' }).click();
+  await page.setViewportSize({ width: 1440, height: 900 });
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'runContextCommand' || request.command !== 'selectCompareBase')
     throw new Error(`Unexpected context command: ${JSON.stringify(request)}`);

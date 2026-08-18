@@ -1,4 +1,4 @@
-import React, { MouseEvent, useEffect, useMemo, useState } from 'react';
+import React, { MouseEvent, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   BranchComparison,
   CommitDetails,
@@ -245,8 +245,8 @@ export function App() {
       nodeType: ref.type === 'localBranch' ? 'branch' : ref.type,
       nodeId: ref.fullName,
       selectedRefs: selection.map((item) => item.fullName),
-      x: Math.min(event.clientX, window.innerWidth - 260),
-      y: Math.min(event.clientY, window.innerHeight - 360),
+      x: event.clientX,
+      y: event.clientY,
     });
   };
   const openCommitContextMenu = (commit: string, event: MouseEvent) => {
@@ -257,8 +257,8 @@ export function App() {
       nodeType: 'commit',
       nodeId: commit,
       selectedRefs: [],
-      x: Math.min(event.clientX, window.innerWidth - 260),
-      y: Math.min(event.clientY, window.innerHeight - 360),
+      x: event.clientX,
+      y: event.clientY,
     });
   };
   const setRefVisibility = (nextTags: boolean, nextRemotes: boolean) => {
@@ -1275,12 +1275,29 @@ function ContextMenu({
   menu: ContextMenuState;
   onRun: (command: GraphContextMenuItem['command']) => void;
 }) {
+  const menuRef = React.useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ left: menu.x, top: menu.y });
   const groups: GraphContextMenuItem['group'][] = ['compare', 'graph', 'git', 'manage', 'copy'];
+
+  useLayoutEffect(() => {
+    const element = menuRef.current;
+    if (!element) return;
+    const margin = 8;
+    const { width, height } = element.getBoundingClientRect();
+    const left = Math.max(margin, Math.min(menu.x, window.innerWidth - width - margin));
+    const top =
+      menu.y + height + margin <= window.innerHeight
+        ? Math.max(margin, menu.y)
+        : Math.max(margin, menu.y - height);
+    setPosition({ left, top });
+  }, [menu]);
+
   return (
     <div
+      ref={menuRef}
       className="context-menu"
       role="menu"
-      style={{ left: menu.x, top: menu.y }}
+      style={{ left: position.left, top: position.top }}
       onClick={(event) => event.stopPropagation()}
     >
       <div className="context-title">
