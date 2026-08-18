@@ -834,12 +834,12 @@ function Inspector({
   const selectedOther = selected[1]?.fullName;
   const fallbackOther = refs.find((ref) => ref.fullName !== primary?.fullName)?.fullName ?? '';
   const [otherOverride, setOtherOverride] = useState<string>();
+  useEffect(() => setOtherOverride(undefined), [primary?.fullName, selectedOther]);
   const other =
-    selectedOther ??
-    (otherOverride &&
+    otherOverride &&
     refs.some((ref) => ref.fullName === otherOverride && ref.fullName !== primary?.fullName)
       ? otherOverride
-      : fallbackOther);
+      : (selectedOther ?? fallbackOther);
   const [mode, setMode] = useState<'divergence' | 'snapshot'>('divergence');
   if (!primary && selectedCommitGroup)
     return (
@@ -945,9 +945,10 @@ function Inspector({
           <button className="primary" disabled={!other} onClick={compare}>
             {ui.compareRefs}
           </button>
-          {comparison && comparison.left === primary.fullName && (
-            <Comparison ui={ui} value={comparison} />
-          )}
+          {comparison &&
+            comparison.left === primary.fullName &&
+            comparison.right === other &&
+            comparison.mode === mode && <Comparison ui={ui} value={comparison} />}
         </>
       )}
     </div>

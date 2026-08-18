@@ -367,6 +367,15 @@ try {
     request.right !== 'refs/heads/develop'
   )
     throw new Error(`Unexpected Ctrl-click comparison: ${JSON.stringify(request)}`);
+  await page.locator('.inspector select').selectOption('refs/heads/feature/login');
+  await page.getByRole('button', { name: '参照を比較', exact: true }).click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (
+    request?.type !== 'compareRefs' ||
+    request.left !== 'refs/heads/main' ||
+    request.right !== 'refs/heads/feature/login'
+  )
+    throw new Error(`Unexpected button comparison: ${JSON.stringify(request)}`);
   await page.evaluate(() =>
     window.dispatchEvent(new MessageEvent('message', { data: window.__smokeComparison })),
   );

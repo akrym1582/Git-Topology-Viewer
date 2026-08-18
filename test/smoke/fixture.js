@@ -148,7 +148,7 @@ window.__smokeComparison = {
   type: 'comparison',
   payload: {
     left: 'refs/heads/main',
-    right: 'refs/heads/develop',
+    right: 'refs/heads/feature/login',
     mode: 'divergence',
     mergeBases: [commits.release],
     ahead: 12,
