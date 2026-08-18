@@ -10,6 +10,8 @@ Click an image to view it at full size.
 
 [![Main screen showing the branch and merge graph](docs/images/smoke-main-screen.png)](docs/images/smoke-main-screen.png)
 
+[![Ref comparison showing changed files and unique commit tabs](docs/images/smoke-branch-comparison-context-menu.png)](docs/images/smoke-branch-comparison-context-menu.png)
+
 ## Features
 
 - A vertical **Branches & merges** graph of local branches and optional tags or remote branches.
@@ -18,8 +20,8 @@ Click an image to view it at full size.
 - Its options can hide ordinary commits entirely or show every commit instead of the summary nodes.
 - No commit-range expansion controls.
 - Select a ref to inspect its history; non-`main` branches start at their merge-base with the nearest graph target, while `main` shows its full history.
-- Ref comparison with merge base, unique commits, line statistics, and changed files.
-- Compare refs for merge bases, unique commits, line statistics, and changed files.
+- Ctrl/Cmd-click two refs to compare their current snapshots automatically. Change the comparison target from the inspector dropdown; a loading indicator is shown while Git calculates the result.
+- The comparison inspector shows the merge base and line statistics, with changed files shown by default. Use the **only left** and **only right** tabs to review commits unique to either ref.
 - Select a history entry to inspect its changed files and line statistics.
 - Read-only branch file diffs opened in VS Code's standard diff editor—no checkout required.
 - Git CLI discovery from VS Code's Git extension, `gitTopology.gitPath`, then `PATH`.
