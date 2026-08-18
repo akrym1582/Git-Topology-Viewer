@@ -153,6 +153,9 @@ try {
   await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeFeatureLog })));
   await page.getByText('分岐点', { exact: true }).waitFor();
   await page.getByText('Release baseline', { exact: true }).waitFor();
+  const featureLogEntries = await page.locator('.ref-log > .log-entry').evaluateAll(elements => elements.map(element => element.querySelector('code')?.textContent));
+  const branchPointEntry = await page.locator('.ref-log > .branch-point + .log-entry').evaluate(element => element.querySelector('code')?.textContent);
+  if (featureLogEntries.at(-1) !== branchPointEntry) throw new Error(`Expected the branch point at the end of the ref history: ${JSON.stringify(featureLogEntries)}`);
   const resizeHandle = page.getByRole('separator', { name: '詳細ペインの幅を変更' });
   const initialInspectorWidth = await page.locator('aside').evaluate(element => element.getBoundingClientRect().width);
   const resizeBox = await resizeHandle.boundingBox();
