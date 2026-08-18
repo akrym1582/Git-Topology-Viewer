@@ -4,6 +4,12 @@
 
 A VS Code extension for understanding relationships between branches and tags from a repository's **commit DAG**. It never infers that one branch was created from another.
 
+## Screenshots
+
+Click an image to view it at full size.
+
+[![Main screen showing the branch and merge graph](docs/images/smoke-main-screen.png)](docs/images/smoke-main-screen.png)
+
 ## Features
 
 - A vertical **Branches & merges** graph of local branches and optional tags or remote branches.
