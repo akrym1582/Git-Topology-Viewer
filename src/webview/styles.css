@@ -95,12 +95,6 @@ aside { min-width: 0; background: var(--panel); overflow: auto; }
 .commit-files { margin: 0 0 12px; padding: 0 8px 8px; border: 1px solid #354158; border-top: 0; background: #111720; }
 .commit-files .metrics { margin: 0 -8px 8px; }
 .loading-details { color: var(--muted); }
-.commit-list { border: 1px solid #354158; background: #111720; }
-.commit-list button { width: 100%; display: flex; gap: 8px; align-items: baseline; border: 0; border-top: 1px solid #2d3440; background: transparent; padding: 9px 10px; text-align: left; }
-.commit-list button:first-child { border-top: 0; }
-.commit-list button:hover, .commit-list button.selected { background: #202837; }
-.commit-list button code { flex: 0 0 auto; }
-.commit-list button span { color: #c9d0dc; overflow-wrap: anywhere; }
 .added, .files ins { color: #5bdb95; text-decoration: none; }
 .removed, .files del { color: #f37981; text-decoration: none; }
 .context-group { text-transform: uppercase; color: var(--accent); font-size: 9px; font-weight: 700; letter-spacing: 1px; padding: 8px 10px 3px; border-top: 1px solid #394150; }

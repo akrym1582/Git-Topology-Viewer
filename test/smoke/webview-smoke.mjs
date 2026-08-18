@@ -54,7 +54,7 @@ try {
 
   let request;
   await page.locator('.commit-group .group-badge').click();
-  if (await page.locator('.commit-list button').count() !== 5) throw new Error('Expected every summarized commit to be listed in the details pane');
+  if (await page.locator('.ref-log .log-entry').count() !== 5) throw new Error('Expected every summarized commit to be listed in the commit history component');
   await page.getByRole('button', { name: 'b16a9821234567890 の変更を表示' }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'showCommitDetails' || request.commit !== 'b16a9821234567890') throw new Error(`Unexpected summarized commit details request: ${JSON.stringify(request)}`);
