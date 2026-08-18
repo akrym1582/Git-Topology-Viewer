@@ -4,15 +4,10 @@ body { margin: 0; background: var(--bg); color: #e8ebf2; font: 13px var(--vscode
 button, input, select { font: inherit; color: inherit; }
 button:not(:disabled), select, input[type=checkbox]:not(:disabled), input[type=radio]:not(:disabled), [role="button"] { cursor: pointer; }
 .app { height: 100vh; display: flex; flex-direction: column; }
-header { height: 64px; display: flex; align-items: center; padding: 0 22px; border-bottom: 1px solid #282e3a; background: #141821; }
-.brand { display: flex; gap: 11px; align-items: center; min-width: 280px; }
-.brand .mark { font-size: 30px; color: var(--accent); }
-.brand strong, .brand small { display: block; }
-.brand small { color: var(--muted); margin-top: 2px; }
 .modes { display: flex; background: #0d1016; padding: 3px; border-radius: 7px; }
 .modes button, .refresh, .actions button { border: 0; background: transparent; padding: 7px 16px; border-radius: 5px; }
 .modes .active { background: #303848; color: #fff; }
-.refresh { margin-left: auto; border: 1px solid #384152; }
+.refresh { margin-left: 0; border: 1px solid #384152; white-space: nowrap; }
 .filters { height: 48px; display: flex; align-items: center; gap: 20px; padding: 0 22px; border-bottom: 1px solid #252b36; color: #b8c0d0; }
 .filters label { display: flex; gap: 7px; cursor: pointer; }
 .filters input[type=checkbox] { accent-color: var(--accent); }

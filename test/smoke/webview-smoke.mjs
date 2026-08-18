@@ -21,7 +21,7 @@ page.on('pageerror', error => pageErrors.push(error.stack ?? error.message));
 try {
   await page.goto(`http://127.0.0.1:${address.port}/test/smoke/fixture.html`, { waitUntil: 'networkidle' });
   try {
-    await page.getByText('commerce-platform').waitFor();
+    await page.getByRole('button', { name: /更新/ }).waitFor();
   } catch (error) {
     if (pageErrors.length) throw new Error(`Webview errors before graph render: ${pageErrors.join('; ')}`);
     throw error;
@@ -29,6 +29,8 @@ try {
   await mkdir(imageDir, { recursive: true });
   await page.screenshot({ path: join(imageDir, 'smoke-main-screen.png'), fullPage: true });
 
+  if (await page.locator('header, .brand').count()) throw new Error('The redundant graph header must not render');
+  await page.locator('.filters').getByRole('button', { name: /更新/ }).waitFor();
   if (await page.getByRole('tablist').count()) throw new Error('The viewer must expose only the Branches & merges view');
   if (await page.getByRole('button', { name: 'Git 関係図' }).count() || await page.getByRole('button', { name: 'コミット履歴' }).count()) throw new Error('Deprecated graph tabs must not render');
   if (await page.locator('.commit-node').count() !== 5) throw new Error('Expected five structural commits');
