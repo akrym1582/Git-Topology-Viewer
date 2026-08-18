@@ -7,7 +7,16 @@ export interface CommitGraph { nodes: Map<string, CommitNode>; order: string[] }
 export interface RefViewNode { id: string; refs: GitRef[]; lane: number; row: number; x: number; y: number }
 export interface RefViewEdge { from: string; to: string }
 export interface RefViewGraph { nodes: RefViewNode[]; edges: RefViewEdge[] }
-export interface CommitViewNode { id: string; refs: GitRef[]; lane: number; row: number; x: number; y: number }
+export interface CommitViewNode {
+  id: string;
+  refs: GitRef[];
+  lane: number;
+  row: number;
+  x: number;
+  y: number;
+  /** IDs of ordinary linear commits represented by one summary node. */
+  commitIds?: string[];
+}
 export interface CommitViewEdge { from: string; to: string }
 export interface CommitViewGraph { nodes: CommitViewNode[]; edges: CommitViewEdge[] }
 export interface BranchComparison { left: string; right: string; mode: 'divergence' | 'snapshot'; mergeBases: string[]; ahead: number; behind: number; additions: number; deletions: number; files: ChangedFile[]; onlyLeft: CommitInfo[]; onlyRight: CommitInfo[] }

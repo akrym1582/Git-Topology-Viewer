@@ -18,10 +18,33 @@ describe('SignificantCommitGraphBuilder', () => {
 
     const view = new SignificantCommitGraphBuilder().build(graph);
 
-    expect(view.nodes.map(node => node.id)).toEqual(['tip', 'merge', 'feature', 'branch', 'root']);
+    expect(view.nodes.map(node => node.id)).toEqual(['tip', 'merge', 'commit-group:trunk', 'feature', 'branch', 'commit-group:ordinary', 'root']);
+    expect(view.nodes.find(node => node.id === 'commit-group:trunk')?.commitIds).toEqual(['trunk']);
+    expect(view.nodes.find(node => node.id === 'commit-group:ordinary')?.commitIds).toEqual(['ordinary']);
     expect(view.edges).toEqual([
-      { from: 'tip', to: 'merge' }, { from: 'merge', to: 'feature' }, { from: 'merge', to: 'branch' },
-      { from: 'feature', to: 'branch' }, { from: 'branch', to: 'root' }
+      { from: 'tip', to: 'merge' }, { from: 'merge', to: 'commit-group:trunk' }, { from: 'commit-group:trunk', to: 'branch' },
+      { from: 'merge', to: 'feature' }, { from: 'feature', to: 'branch' }, { from: 'branch', to: 'commit-group:ordinary' },
+      { from: 'commit-group:ordinary', to: 'root' }
+    ]);
+  });
+
+  it('places a multi-commit summary between significant commits', () => {
+    const nodes = new Map([
+      ['tip', { id: 'tip', parents: ['newer'], refs: [ref('main', 'tip')] }],
+      ['newer', { id: 'newer', parents: ['middle'], refs: [] }],
+      ['middle', { id: 'middle', parents: ['older'], refs: [] }],
+      ['older', { id: 'older', parents: ['root'], refs: [] }],
+      ['root', { id: 'root', parents: [], refs: [] }]
+    ]);
+    const graph: CommitGraph = { nodes, order: ['tip', 'newer', 'middle', 'older', 'root'] };
+
+    const view = new SignificantCommitGraphBuilder().build(graph);
+
+    expect(view.nodes.map(node => node.id)).toEqual(['tip', 'commit-group:newer:middle:older', 'root']);
+    expect(view.nodes[1].commitIds).toEqual(['newer', 'middle', 'older']);
+    expect(view.edges).toEqual([
+      { from: 'tip', to: 'commit-group:newer:middle:older' },
+      { from: 'commit-group:newer:middle:older', to: 'root' }
     ]);
   });
 });

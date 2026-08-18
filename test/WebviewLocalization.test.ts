@@ -11,6 +11,8 @@ describe('webview localization', () => {
     expect(strings.commitGraph).toBe('コミット履歴');
     expect(strings.commitGraphUnavailable).toContain('コミット履歴を読み込めません');
     expect(strings.commitsAndRefs(3, 2)).toBe('3 件のコミット · 2 個の参照');
+    expect(strings.commitGroup(4)).toBe('4 件のコミットをまとめて表示');
+    expect(strings.commitGroupAriaLabel(4)).toBe('4 件の連続したコミットの概要');
     expect(strings.readingRelations).toBe('ブランチの関係を読み込み中…');
     expect(strings.branchPoint).toBe('分岐点');
   });

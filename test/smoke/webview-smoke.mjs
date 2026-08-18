@@ -48,6 +48,7 @@ try {
 
   await page.getByRole('tab', { name: '分岐・マージ' }).click();
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5);
+  if (await page.locator('.commit-group').count() !== 1) throw new Error('Expected the linear commit range to render as one summary group');
   await page.screenshot({ path: join(imageDir, 'smoke-significant-commits.png'), fullPage: true });
   await page.getByRole('tab', { name: 'Git 関係図' }).click();
 
