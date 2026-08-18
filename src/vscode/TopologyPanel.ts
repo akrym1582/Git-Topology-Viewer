@@ -12,51 +12,125 @@ import { CommitGraphBuilder } from '../domain/CommitGraphBuilder';
 import { SignificantCommitGraphBuilder } from '../domain/SignificantCommitGraphBuilder';
 import { BranchStatus, CommitGraph, GitRef, RefVisibility } from '../domain/models';
 import { GitContentProvider } from './GitContentProvider';
-import { GraphContextMenuItem, GraphMenuCommand, GraphNodeType, isWebviewRequest, WebviewRequest } from './messages';
+import {
+  GraphContextMenuItem,
+  GraphMenuCommand,
+  GraphNodeType,
+  isWebviewRequest,
+  WebviewRequest,
+} from './messages';
 import { ContextMenuPolicy } from './ContextMenuPolicy';
 
 export class TopologyPanel {
   private static current: TopologyPanel | undefined;
-  private compareBase?: string; private mergeBaseIds: string[] = []; private focusedRef?: string;
-  private refs: GitRef[] = []; private branchStatuses: BranchStatus[] = []; private graph?: CommitGraph; private currentBranch?: string;
+  private compareBase?: string;
+  private mergeBaseIds: string[] = [];
+  private focusedRef?: string;
+  private refs: GitRef[] = [];
+  private branchStatuses: BranchStatus[] = [];
+  private graph?: CommitGraph;
+  private currentBranch?: string;
   private relation?: import('../domain/models').RefViewGraph;
   private commitView?: import('../domain/models').CommitViewGraph;
   private refVisibility: RefVisibility = { tags: true, remotes: false };
-  private readonly diff: DiffService; private readonly disposables: vscode.Disposable[] = [];
-  private readonly operations: BranchOperationService; private readonly commitOperations: CommitOperationService;
+  private readonly diff: DiffService;
+  private readonly disposables: vscode.Disposable[] = [];
+  private readonly operations: BranchOperationService;
+  private readonly commitOperations: CommitOperationService;
   private readonly menuPolicy = new ContextMenuPolicy();
-  private constructor(private panel: vscode.WebviewPanel, private git: GitClient, private root: string, private workspaceState: vscode.Memento, extensionUri: vscode.Uri) {
+  private constructor(
+    private panel: vscode.WebviewPanel,
+    private git: GitClient,
+    private root: string,
+    private workspaceState: vscode.Memento,
+    extensionUri: vscode.Uri,
+  ) {
     this.compareBase = workspaceState.get<string>('gitTopology.compareBase');
-    this.diff = new DiffService(git); this.operations = new BranchOperationService(git); this.commitOperations = new CommitOperationService(git); panel.webview.html = this.html(panel.webview, extensionUri);
-    panel.webview.onDidReceiveMessage((message: unknown) => this.receiveMessage(message), undefined, this.disposables);
-    panel.onDidDispose(() => { this.disposables.forEach(d => d.dispose()); TopologyPanel.current = undefined; });
+    this.diff = new DiffService(git);
+    this.operations = new BranchOperationService(git);
+    this.commitOperations = new CommitOperationService(git);
+    panel.webview.html = this.html(panel.webview, extensionUri);
+    panel.webview.onDidReceiveMessage(
+      (message: unknown) => this.receiveMessage(message),
+      undefined,
+      this.disposables,
+    );
+    panel.onDidDispose(() => {
+      this.disposables.forEach((d) => d.dispose());
+      TopologyPanel.current = undefined;
+    });
     this.load();
   }
-  static show(git: GitClient, root: string, extensionUri: vscode.Uri, workspaceState: vscode.Memento): TopologyPanel {
-    if (this.current) { this.current.panel.reveal(); return this.current; }
-    const panel = vscode.window.createWebviewPanel('gitTopology', vscode.l10n.t('Git Topology: {0}', path.basename(root)), vscode.ViewColumn.Active, { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'dist')] });
-    return this.current = new TopologyPanel(panel, git, root, workspaceState, extensionUri);
+  static show(
+    git: GitClient,
+    root: string,
+    extensionUri: vscode.Uri,
+    workspaceState: vscode.Memento,
+  ): TopologyPanel {
+    if (this.current) {
+      this.current.panel.reveal();
+      return this.current;
+    }
+    const panel = vscode.window.createWebviewPanel(
+      'gitTopology',
+      vscode.l10n.t('Git Topology: {0}', path.basename(root)),
+      vscode.ViewColumn.Active,
+      {
+        enableScripts: true,
+        retainContextWhenHidden: true,
+        localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'dist')],
+      },
+    );
+    return (this.current = new TopologyPanel(panel, git, root, workspaceState, extensionUri));
   }
   private async load() {
     try {
       this.refs = await new RefLoader(this.git).load();
       this.branchStatuses = await new BranchStatusService(this.git).load(this.refs);
-      this.graph = await new CommitLoader(this.git).load(this.refs, vscode.workspace.getConfiguration('gitTopology').get('maxCommits', 10000));
+      this.graph = await new CommitLoader(this.git).load(
+        this.refs,
+        vscode.workspace.getConfiguration('gitTopology').get('maxCommits', 10000),
+      );
       this.currentBranch = await this.operations.currentBranch();
       this.sendGraph();
-    } catch (e) { this.post({ type: 'error', message: e instanceof Error ? e.message : String(e) }); }
+    } catch (e) {
+      this.post({ type: 'error', message: e instanceof Error ? e.message : String(e) });
+    }
   }
   private sendGraph() {
     if (!this.graph) return;
     this.relation = new BranchRelationBuilder().build(this.graph, this.refVisibility);
     this.commitView = new CommitGraphBuilder().build(this.graph, this.refVisibility);
-    const significantGraph = new SignificantCommitGraphBuilder().build(this.graph, this.refVisibility);
-    const minimalGraph = new SignificantCommitGraphBuilder().build(this.graph, this.refVisibility, { summarizeLinearCommits: false });
-    this.post({ type: 'graph', payload: { graph: this.relation, significantGraph, minimalGraph, commitGraph: this.commitView, refs: this.refs, branchStatuses: this.branchStatuses, repository: path.basename(this.root), currentBranch: this.currentBranch, compareBase: this.compareBase, mergeBaseIds: this.mergeBaseIds, focusedRef: this.focusedRef } });
+    const significantGraph = new SignificantCommitGraphBuilder().build(
+      this.graph,
+      this.refVisibility,
+    );
+    const minimalGraph = new SignificantCommitGraphBuilder().build(this.graph, this.refVisibility, {
+      summarizeLinearCommits: false,
+    });
+    this.post({
+      type: 'graph',
+      payload: {
+        graph: this.relation,
+        significantGraph,
+        minimalGraph,
+        commitGraph: this.commitView,
+        refs: this.refs,
+        branchStatuses: this.branchStatuses,
+        repository: path.basename(this.root),
+        currentBranch: this.currentBranch,
+        compareBase: this.compareBase,
+        mergeBaseIds: this.mergeBaseIds,
+        focusedRef: this.focusedRef,
+      },
+    });
   }
   private receiveMessage(message: unknown): void {
     if (!isWebviewRequest(message)) {
-      this.post({ type: 'error', message: this.t('The webview sent an invalid request. Refresh the viewer and try again.') });
+      this.post({
+        type: 'error',
+        message: this.t('The webview sent an invalid request. Refresh the viewer and try again.'),
+      });
       return;
     }
     void this.message(message);
@@ -64,100 +138,266 @@ export class TopologyPanel {
   private async message(message: WebviewRequest) {
     try {
       if (message.type === 'refresh') await this.load();
-      if (message.type === 'setRefVisibility') { this.refVisibility = { tags: message.tags, remotes: message.remotes }; this.sendGraph(); }
-      if (message.type === 'contextMenu') this.sendContextMenu(message.nodeType, message.nodeId, message.selectedRefs, message.x, message.y);
-      if (message.type === 'runContextCommand') await this.runContextCommand(message.command, message.nodeType, message.nodeId, message.selectedRefs);
+      if (message.type === 'setRefVisibility') {
+        this.refVisibility = { tags: message.tags, remotes: message.remotes };
+        this.sendGraph();
+      }
+      if (message.type === 'contextMenu')
+        this.sendContextMenu(
+          message.nodeType,
+          message.nodeId,
+          message.selectedRefs,
+          message.x,
+          message.y,
+        );
+      if (message.type === 'runContextCommand')
+        await this.runContextCommand(
+          message.command,
+          message.nodeType,
+          message.nodeId,
+          message.selectedRefs,
+        );
       if (message.type === 'compareRefs') {
         this.assertKnownRef(message.left);
         this.assertKnownRef(message.right);
-        this.post({ type: 'comparison', payload: await this.diff.compare(message.left, message.right, message.mode) });
+        this.post({
+          type: 'comparison',
+          payload: await this.diff.compare(message.left, message.right, message.mode),
+        });
       }
       if (message.type === 'showRefLog') {
         const ref = this.knownRef(message.ref);
-        this.post({ type: 'refLog', payload: await this.diff.branchLog(ref.fullName, this.historyBase(ref)) });
+        this.post({
+          type: 'refLog',
+          payload: await this.diff.branchLog(ref.fullName, this.historyBase(ref)),
+        });
       }
-      if (message.type === 'showCommitDetails') this.post({ type: 'commitDetails', payload: await this.diff.commitDetails(message.commit) });
-      if (message.type === 'showCommitGroupDetails') this.post({ type: 'commitGroupDetails', payload: { commits: await this.diff.commitSummaries(message.commits) } });
+      if (message.type === 'showCommitDetails')
+        this.post({
+          type: 'commitDetails',
+          payload: await this.diff.commitDetails(message.commit),
+        });
+      if (message.type === 'showCommitGroupDetails')
+        this.post({
+          type: 'commitGroupDetails',
+          payload: { commits: await this.diff.commitSummaries(message.commits) },
+        });
       if (message.type === 'switchBranch') await this.switchBranch(message.ref);
       if (message.type === 'mergeBranch') await this.mergeBranch(message.ref);
       if (message.type === 'openDiff') {
-        const left = GitContentProvider.uri(message.left, message.path, 'left', message.status !== 'D');
+        const left = GitContentProvider.uri(
+          message.left,
+          message.path,
+          'left',
+          message.status !== 'D',
+        );
         const rightPath = message.oldPath ?? message.path;
-        const right = GitContentProvider.uri(message.right, rightPath, 'right', message.status !== 'A');
-        await vscode.commands.executeCommand('vscode.diff', left, right, `${message.path} (${message.left} ↔ ${message.right})`);
+        const right = GitContentProvider.uri(
+          message.right,
+          rightPath,
+          'right',
+          message.status !== 'A',
+        );
+        await vscode.commands.executeCommand(
+          'vscode.diff',
+          left,
+          right,
+          `${message.path} (${message.left} ↔ ${message.right})`,
+        );
       }
       if (message.type === 'copy') await vscode.env.clipboard.writeText(message.value);
-    } catch (e) { this.post({ type: 'error', message: e instanceof Error ? e.message : String(e) }); }
+    } catch (e) {
+      this.post({ type: 'error', message: e instanceof Error ? e.message : String(e) });
+    }
   }
 
-  private sendContextMenu(nodeType: GraphNodeType, nodeId: string, selectedRefs: string[], x: number, y: number): void {
+  private sendContextMenu(
+    nodeType: GraphNodeType,
+    nodeId: string,
+    selectedRefs: string[],
+    x: number,
+    y: number,
+  ): void {
     if (nodeType === 'commit') {
       this.assertKnownCommit(nodeId);
-      this.post({ type: 'contextMenuItems', nodeType, nodeId, selectedRefs: [], x, y, items: this.menuPolicy.commitItems({
-        hasCurrentBranch: Boolean(this.currentBranch),
-        hasCompareBase: Boolean(this.compareBase),
-        hasCompareTarget: this.refs.length > 0,
-        hasMergeBaseTarget: Boolean(this.currentBranch || this.compareBase)
-      }, message => this.t(message)) });
+      this.post({
+        type: 'contextMenuItems',
+        nodeType,
+        nodeId,
+        selectedRefs: [],
+        x,
+        y,
+        items: this.menuPolicy.commitItems(
+          {
+            hasCurrentBranch: Boolean(this.currentBranch),
+            hasCompareBase: Boolean(this.compareBase),
+            hasCompareTarget: this.refs.length > 0,
+            hasMergeBaseTarget: Boolean(this.currentBranch || this.compareBase),
+          },
+          (message) => this.t(message),
+        ),
+      });
       return;
     }
     const ref = this.knownRef(nodeId);
-    const selection = selectedRefs.map(candidate => this.knownRef(candidate));
-    if (!selection.some(candidate => candidate.fullName === ref.fullName)) throw new Error(this.t('The context-menu selection is stale. Refresh the viewer and try again.'));
+    const selection = selectedRefs.map((candidate) => this.knownRef(candidate));
+    if (!selection.some((candidate) => candidate.fullName === ref.fullName))
+      throw new Error(
+        this.t('The context-menu selection is stale. Refresh the viewer and try again.'),
+      );
     if (selection.length === 2) {
-      this.post({ type: 'contextMenuItems', nodeType, nodeId, selectedRefs: selection.map(candidate => candidate.fullName), x, y, items: this.menuPolicy.comparisonItems(message => this.t(message)) });
+      this.post({
+        type: 'contextMenuItems',
+        nodeType,
+        nodeId,
+        selectedRefs: selection.map((candidate) => candidate.fullName),
+        x,
+        y,
+        items: this.menuPolicy.comparisonItems((message) => this.t(message)),
+      });
       return;
     }
     const local = ref.type === 'localBranch';
     const hasCurrent = Boolean(this.currentBranch && this.currentBranch !== ref.name);
     const hasBase = Boolean(this.compareBase && this.compareBase !== ref.fullName);
-    const item = (command: GraphMenuCommand, label: string, group: GraphContextMenuItem['group'], enabled = true): GraphContextMenuItem => ({ command, label, group, enabled, visible: true });
+    const item = (
+      command: GraphMenuCommand,
+      label: string,
+      group: GraphContextMenuItem['group'],
+      enabled = true,
+    ): GraphContextMenuItem => ({ command, label, group, enabled, visible: true });
     const items = [
       item('compareCurrent', this.t('Compare with Current Branch'), 'compare', hasCurrent),
-      item('selectCompareBase', this.compareBase === ref.fullName ? this.t('Compare Base (selected)') : this.t('Select as Compare Base'), 'compare', this.compareBase !== ref.fullName),
+      item(
+        'selectCompareBase',
+        this.compareBase === ref.fullName
+          ? this.t('Compare Base (selected)')
+          : this.t('Select as Compare Base'),
+        'compare',
+        this.compareBase !== ref.fullName,
+      ),
       item('compareWith', this.t('Compare with…'), 'compare', this.refs.length > 1),
       item('compareBase', this.t('Compare with Selected Base'), 'compare', hasBase),
       item('showChangedFiles', this.t('Show Changed Files'), 'compare', hasCurrent || hasBase),
       item('showMergeBase', this.t('Show Merge Base'), 'compare', hasCurrent || hasBase),
-      item('focus', this.t(ref.type === 'tag' ? 'Focus on This Tag' : 'Focus on This Branch'), 'graph'),
+      item(
+        'focus',
+        this.t(ref.type === 'tag' ? 'Focus on This Tag' : 'Focus on This Branch'),
+        'graph',
+      ),
       item('related', this.t('Show Related Branches Only'), 'graph'),
-      item('checkout', this.t('Checkout'), 'git', local && this.currentBranch !== ref.name), item('createBranch', this.t('Create Branch from Here…'), 'git'),
-      item('copyName', this.t(ref.type === 'tag' ? 'Copy Tag Name' : 'Copy Branch Name'), 'copy'), item('copyHash', this.t('Copy Commit Hash'), 'copy')
+      item('checkout', this.t('Checkout'), 'git', local && this.currentBranch !== ref.name),
+      item('createBranch', this.t('Create Branch from Here…'), 'git'),
+      item('copyName', this.t(ref.type === 'tag' ? 'Copy Tag Name' : 'Copy Branch Name'), 'copy'),
+      item('copyHash', this.t('Copy Commit Hash'), 'copy'),
     ];
-    const status = this.branchStatuses.find(candidate => candidate.ref === ref.fullName);
-    items.push(...this.menuPolicy.branchItems({ ref, currentBranch: this.currentBranch, hasUpstream: Boolean(status?.upstream), operation: { type: 'normal', hasConflicts: false } }, message => this.t(message)));
-    this.post({ type: 'contextMenuItems', nodeType, nodeId, selectedRefs: [ref.fullName], x, y, items });
+    const status = this.branchStatuses.find((candidate) => candidate.ref === ref.fullName);
+    items.push(
+      ...this.menuPolicy.branchItems(
+        {
+          ref,
+          currentBranch: this.currentBranch,
+          hasUpstream: Boolean(status?.upstream),
+          operation: { type: 'normal', hasConflicts: false },
+        },
+        (message) => this.t(message),
+      ),
+    );
+    this.post({
+      type: 'contextMenuItems',
+      nodeType,
+      nodeId,
+      selectedRefs: [ref.fullName],
+      x,
+      y,
+      items,
+    });
   }
-  private async runContextCommand(command: GraphMenuCommand, nodeType: GraphNodeType, nodeId: string, selectedRefs?: string[]): Promise<void> {
+  private async runContextCommand(
+    command: GraphMenuCommand,
+    nodeType: GraphNodeType,
+    nodeId: string,
+    selectedRefs?: string[],
+  ): Promise<void> {
     if (nodeType === 'commit') {
       await this.runCommitContextCommand(command, nodeId);
       return;
     }
     const ref = this.knownRef(nodeId);
-    if (command === 'compareSelected' || command === 'compareSelectedSnapshots' || command === 'showSelectedMergeBase') {
-      if (!selectedRefs || selectedRefs.length !== 2) throw new Error(this.t('Select exactly two refs before using a comparison menu action.'));
-      const selection = selectedRefs.map(candidate => this.knownRef(candidate));
-      if (!selection.some(candidate => candidate.fullName === ref.fullName)) throw new Error(this.t('The comparison selection is stale. Refresh the viewer and try again.'));
-      const result = await this.compare(selection[0].fullName, selection[1].fullName, command === 'compareSelectedSnapshots' ? 'snapshot' : 'divergence');
-      if (command === 'showSelectedMergeBase') { this.mergeBaseIds = result.mergeBases; this.sendGraph(); }
+    if (
+      command === 'compareSelected' ||
+      command === 'compareSelectedSnapshots' ||
+      command === 'showSelectedMergeBase'
+    ) {
+      if (!selectedRefs || selectedRefs.length !== 2)
+        throw new Error(this.t('Select exactly two refs before using a comparison menu action.'));
+      const selection = selectedRefs.map((candidate) => this.knownRef(candidate));
+      if (!selection.some((candidate) => candidate.fullName === ref.fullName))
+        throw new Error(
+          this.t('The comparison selection is stale. Refresh the viewer and try again.'),
+        );
+      const result = await this.compare(
+        selection[0].fullName,
+        selection[1].fullName,
+        command === 'compareSelectedSnapshots' ? 'snapshot' : 'divergence',
+      );
+      if (command === 'showSelectedMergeBase') {
+        this.mergeBaseIds = result.mergeBases;
+        this.sendGraph();
+      }
       return;
     }
-    const comparisonBase = this.compareBase && this.compareBase !== ref.fullName
-      ? this.compareBase : this.currentBranch ? `refs/heads/${this.currentBranch}` : undefined;
-    if (command === 'selectCompareBase') { this.compareBase = ref.fullName; await this.workspaceState.update('gitTopology.compareBase', ref.fullName); this.sendGraph(); return; }
-    if (command === 'compareCurrent') await this.compare(ref.fullName, this.currentBranch ? `refs/heads/${this.currentBranch}` : undefined);
+    const comparisonBase =
+      this.compareBase && this.compareBase !== ref.fullName
+        ? this.compareBase
+        : this.currentBranch
+          ? `refs/heads/${this.currentBranch}`
+          : undefined;
+    if (command === 'selectCompareBase') {
+      this.compareBase = ref.fullName;
+      await this.workspaceState.update('gitTopology.compareBase', ref.fullName);
+      this.sendGraph();
+      return;
+    }
+    if (command === 'compareCurrent')
+      await this.compare(
+        ref.fullName,
+        this.currentBranch ? `refs/heads/${this.currentBranch}` : undefined,
+      );
     if (command === 'compareWith') {
-      const candidates = this.refs.filter(candidate => candidate.fullName !== ref.fullName);
-      const picked = await vscode.window.showQuickPick(candidates.map(candidate => ({ label: candidate.name, description: candidate.type, ref: candidate.fullName })), { title: this.t('Compare {0} with…', ref.name) });
+      const candidates = this.refs.filter((candidate) => candidate.fullName !== ref.fullName);
+      const picked = await vscode.window.showQuickPick(
+        candidates.map((candidate) => ({
+          label: candidate.name,
+          description: candidate.type,
+          ref: candidate.fullName,
+        })),
+        { title: this.t('Compare {0} with…', ref.name) },
+      );
       if (picked) await this.compare(ref.fullName, picked.ref);
     }
-    if (command === 'compareBase' || command === 'showChangedFiles') await this.compare(ref.fullName, comparisonBase);
-    if (command === 'showMergeBase') { const result = await this.compare(ref.fullName, comparisonBase); this.mergeBaseIds = result.mergeBases; this.sendGraph(); }
-    if (command === 'focus' || command === 'related') { this.focusedRef = this.focusedRef === ref.fullName ? undefined : ref.fullName; this.post({ type: 'focusRef', ref: this.focusedRef, commitId: ref.commitId, relatedOnly: command === 'related' }); this.sendGraph(); }
+    if (command === 'compareBase' || command === 'showChangedFiles')
+      await this.compare(ref.fullName, comparisonBase);
+    if (command === 'showMergeBase') {
+      const result = await this.compare(ref.fullName, comparisonBase);
+      this.mergeBaseIds = result.mergeBases;
+      this.sendGraph();
+    }
+    if (command === 'focus' || command === 'related') {
+      this.focusedRef = this.focusedRef === ref.fullName ? undefined : ref.fullName;
+      this.post({
+        type: 'focusRef',
+        ref: this.focusedRef,
+        commitId: ref.commitId,
+        relatedOnly: command === 'related',
+      });
+      this.sendGraph();
+    }
     if (command === 'checkout') await this.switchBranch(ref.fullName);
     if (command === 'createBranch') await this.createBranch(ref);
     if (command === 'push') await this.push(ref);
-    if (command === 'pull') await this.runResult(await this.operations.pull(ref.name), this.t('Pulled {0}.', ref.name));
+    if (command === 'pull')
+      await this.runResult(await this.operations.pull(ref.name), this.t('Pulled {0}.', ref.name));
     if (command === 'fetch') await this.fetch(ref);
     if (command === 'checkoutRemote') await this.checkoutRemote(ref);
     if (command === 'mergeIntoCurrent') await this.mergeBranch(ref.fullName);
@@ -170,12 +410,16 @@ export class TopologyPanel {
   private async runCommitContextCommand(command: GraphMenuCommand, commit: string): Promise<void> {
     this.assertKnownCommit(commit);
     const current = this.currentBranch ? `refs/heads/${this.currentBranch}` : undefined;
-    const comparisonBase = this.compareBase && this.compareBase !== commit ? this.compareBase : undefined;
+    const comparisonBase =
+      this.compareBase && this.compareBase !== commit ? this.compareBase : undefined;
     if (command === 'showChanges') {
       this.post({ type: 'commitDetails', payload: await this.diff.commitDetails(commit) });
       return;
     }
-    if (command === 'compareCurrent') { await this.compare(commit, current); return; }
+    if (command === 'compareCurrent') {
+      await this.compare(commit, current);
+      return;
+    }
     if (command === 'compareBase' || command === 'showMergeBase') {
       const result = await this.compare(commit, comparisonBase);
       if (command === 'showMergeBase') this.mergeBaseIds = result.mergeBases;
@@ -183,35 +427,68 @@ export class TopologyPanel {
       return;
     }
     if (command === 'compareWith') {
-      const picked = await vscode.window.showQuickPick(this.refs.map(ref => ({ label: ref.name, description: ref.type, ref: ref.fullName })), { title: this.t('Compare commit with…') });
+      const picked = await vscode.window.showQuickPick(
+        this.refs.map((ref) => ({ label: ref.name, description: ref.type, ref: ref.fullName })),
+        { title: this.t('Compare commit with…') },
+      );
       if (picked) await this.compare(commit, picked.ref);
       return;
     }
     if (command === 'checkoutDetached') {
-      await this.runResult(await this.commitOperations.checkoutDetached(commit), this.t('Checked out {0} in detached HEAD state.', commit.slice(0, 8)));
+      await this.runResult(
+        await this.commitOperations.checkoutDetached(commit),
+        this.t('Checked out {0} in detached HEAD state.', commit.slice(0, 8)),
+      );
       return;
     }
     if (command === 'createBranch') {
-      await this.createBranchFromPoint(commit, this.t('Create branch from {0}', commit.slice(0, 8)));
+      await this.createBranchFromPoint(
+        commit,
+        this.t('Create branch from {0}', commit.slice(0, 8)),
+      );
       return;
     }
     if (command === 'createTag') {
-      const name = await vscode.window.showInputBox({ title: this.t('Create tag from {0}', commit.slice(0, 8)), prompt: this.t('New tag name'), validateInput: value => value.trim() ? undefined : this.t('Enter a tag name.') });
-      if (name) await this.runResult(await this.commitOperations.createTag(name.trim(), commit), this.t('Created tag {0}.', name.trim()));
+      const name = await vscode.window.showInputBox({
+        title: this.t('Create tag from {0}', commit.slice(0, 8)),
+        prompt: this.t('New tag name'),
+        validateInput: (value) => (value.trim() ? undefined : this.t('Enter a tag name.')),
+      });
+      if (name)
+        await this.runResult(
+          await this.commitOperations.createTag(name.trim(), commit),
+          this.t('Created tag {0}.', name.trim()),
+        );
       return;
     }
     if (command === 'cherryPick' || command === 'revert') {
       const action = command === 'cherryPick' ? this.t('Cherry Pick') : this.t('Revert');
-      const choice = await vscode.window.showWarningMessage(this.t('{0} commit {1}?', action, commit.slice(0, 8)), { modal: true }, action);
+      const choice = await vscode.window.showWarningMessage(
+        this.t('{0} commit {1}?', action, commit.slice(0, 8)),
+        { modal: true },
+        action,
+      );
       if (choice !== action) return;
-      const result = command === 'cherryPick' ? await this.commitOperations.cherryPick(commit) : await this.commitOperations.revert(commit);
+      const result =
+        command === 'cherryPick'
+          ? await this.commitOperations.cherryPick(commit)
+          : await this.commitOperations.revert(commit);
       await this.runResult(result, this.t('{0} completed for {1}.', action, commit.slice(0, 8)));
       return;
     }
-    if (command === 'copyHash') { await vscode.env.clipboard.writeText(commit); return; }
-    if (command === 'copyMessage') { await vscode.env.clipboard.writeText(await this.diff.commitMessage(commit)); }
+    if (command === 'copyHash') {
+      await vscode.env.clipboard.writeText(commit);
+      return;
+    }
+    if (command === 'copyMessage') {
+      await vscode.env.clipboard.writeText(await this.diff.commitMessage(commit));
+    }
   }
-  private async compare(left: string, right?: string, mode: 'divergence' | 'snapshot' = 'divergence') {
+  private async compare(
+    left: string,
+    right?: string,
+    mode: 'divergence' | 'snapshot' = 'divergence',
+  ) {
     if (!right) throw new Error(this.t('Select a compare base or check out a local branch first.'));
     const result = await this.diff.compare(left, right, mode);
     this.mergeBaseIds = result.mergeBases;
@@ -223,28 +500,43 @@ export class TopologyPanel {
     await this.createBranchFromPoint(ref.fullName, this.t('Create branch from {0}', ref.name));
   }
   private async createBranchFromPoint(startPoint: string, title: string): Promise<void> {
-    const name = await vscode.window.showInputBox({ title, prompt: this.t('New branch name'), validateInput: value => value.trim() ? undefined : this.t('Enter a branch name.') });
+    const name = await vscode.window.showInputBox({
+      title,
+      prompt: this.t('New branch name'),
+      validateInput: (value) => (value.trim() ? undefined : this.t('Enter a branch name.')),
+    });
     if (!name) return;
-    await this.runResult(await this.operations.createBranch(name.trim(), startPoint), this.t('Created and checked out {0}.', name.trim()));
+    await this.runResult(
+      await this.operations.createBranch(name.trim(), startPoint),
+      this.t('Created and checked out {0}.', name.trim()),
+    );
   }
   private knownRef(fullName: string): GitRef {
-    const ref = this.refs.find(candidate => candidate.fullName === fullName);
-    if (!ref) throw new Error(this.t('The selected ref no longer exists. Refresh the viewer and try again.'));
+    const ref = this.refs.find((candidate) => candidate.fullName === fullName);
+    if (!ref)
+      throw new Error(
+        this.t('The selected ref no longer exists. Refresh the viewer and try again.'),
+      );
     return ref;
   }
   private historyBase(ref: GitRef): string | undefined {
     if (ref.type === 'localBranch' && ref.name === 'main') return undefined;
-    const target = this.relation?.edges.find(edge => edge.from === ref.commitId)?.to;
+    const target = this.relation?.edges.find((edge) => edge.from === ref.commitId)?.to;
     if (!target) return undefined;
-    const refsAtTarget = this.refs.filter(candidate => candidate.commitId === target);
-    return refsAtTarget.find(candidate => candidate.type === 'localBranch')?.fullName
-      ?? refsAtTarget.find(candidate => candidate.type === 'tag')?.fullName
-      ?? refsAtTarget.find(candidate => candidate.type === 'remoteBranch')?.fullName;
+    const refsAtTarget = this.refs.filter((candidate) => candidate.commitId === target);
+    return (
+      refsAtTarget.find((candidate) => candidate.type === 'localBranch')?.fullName ??
+      refsAtTarget.find((candidate) => candidate.type === 'tag')?.fullName ??
+      refsAtTarget.find((candidate) => candidate.type === 'remoteBranch')?.fullName
+    );
   }
 
   private async switchBranch(ref: string): Promise<void> {
     const branch = this.localBranchName(ref);
-    await this.runResult(await this.operations.switchTo(branch), this.t('Switched to {0}.', branch));
+    await this.runResult(
+      await this.operations.switchTo(branch),
+      this.t('Switched to {0}.', branch),
+    );
   }
   private async mergeBranch(ref: string): Promise<void> {
     const branch = this.localBranchName(ref);
@@ -252,54 +544,138 @@ export class TopologyPanel {
     if (!current) throw new Error(this.t('Check out a local branch before merging.'));
     if (current === branch) throw new Error(this.t('{0} is already the current branch.', branch));
     const merge = this.t('Merge Branch');
-    const choice = await vscode.window.showWarningMessage(this.t('Merge {0} into the current branch ({1})?', branch, current), { modal: true }, merge);
+    const choice = await vscode.window.showWarningMessage(
+      this.t('Merge {0} into the current branch ({1})?', branch, current),
+      { modal: true },
+      merge,
+    );
     if (choice !== merge) return;
-    await this.runResult(await this.operations.mergeIntoCurrent(branch), this.t('Merged {0} into {1}.', branch, current));
+    await this.runResult(
+      await this.operations.mergeIntoCurrent(branch),
+      this.t('Merged {0} into {1}.', branch, current),
+    );
   }
   private async push(ref: GitRef): Promise<void> {
     if (ref.type !== 'localBranch') return;
-    const status = this.branchStatuses.find(value => value.ref === ref.fullName);
-    if (status?.upstream) return this.runResult(await this.operations.push(ref.name), this.t('Pushed {0}.', ref.name));
-    const remote = await this.pickRemote(this.t('Push {0} and set upstream', ref.name)); if (!remote) return;
-    await this.runResult(await this.operations.push(ref.name, remote, true), this.t('Pushed {0} to {1} and set upstream.', ref.name, remote));
+    const status = this.branchStatuses.find((value) => value.ref === ref.fullName);
+    if (status?.upstream)
+      return this.runResult(await this.operations.push(ref.name), this.t('Pushed {0}.', ref.name));
+    const remote = await this.pickRemote(this.t('Push {0} and set upstream', ref.name));
+    if (!remote) return;
+    await this.runResult(
+      await this.operations.push(ref.name, remote, true),
+      this.t('Pushed {0} to {1} and set upstream.', ref.name, remote),
+    );
   }
   private async fetch(ref: GitRef): Promise<void> {
-    const remote = ref.type === 'remoteBranch' ? ref.name.split('/')[0] : await this.pickRemote(this.t('Fetch for {0}', ref.name));
-    if (remote) await this.runResult(await this.operations.fetch(remote), this.t('Fetched {0}.', remote));
+    const remote =
+      ref.type === 'remoteBranch'
+        ? ref.name.split('/')[0]
+        : await this.pickRemote(this.t('Fetch for {0}', ref.name));
+    if (remote)
+      await this.runResult(await this.operations.fetch(remote), this.t('Fetched {0}.', remote));
   }
   private async checkoutRemote(ref: GitRef): Promise<void> {
     if (ref.type !== 'remoteBranch') return;
     const local = ref.name.includes('/') ? ref.name.slice(ref.name.indexOf('/') + 1) : ref.name;
-    const existing = this.refs.find(value => value.type === 'localBranch' && value.name === local);
-    if (existing) { const checkout = this.t('Checkout Existing'); const choice = await vscode.window.showInformationMessage(this.t('Local branch "{0}" already exists.', local), checkout, this.t('Cancel')); if (choice === checkout) await this.switchBranch(existing.fullName); return; }
-    await this.runResult(await this.operations.checkoutRemote(ref.name, local), this.t('Checked out {0} as {1}.', ref.name, local));
+    const existing = this.refs.find(
+      (value) => value.type === 'localBranch' && value.name === local,
+    );
+    if (existing) {
+      const checkout = this.t('Checkout Existing');
+      const choice = await vscode.window.showInformationMessage(
+        this.t('Local branch "{0}" already exists.', local),
+        checkout,
+        this.t('Cancel'),
+      );
+      if (choice === checkout) await this.switchBranch(existing.fullName);
+      return;
+    }
+    await this.runResult(
+      await this.operations.checkoutRemote(ref.name, local),
+      this.t('Checked out {0} as {1}.', ref.name, local),
+    );
   }
   private async rebase(ref: GitRef): Promise<void> {
-    const current = this.currentBranch; if (!current) throw new Error(this.t('Check out a local branch before rebasing.'));
-    const rebase = this.t('Rebase'); const choice = await vscode.window.showWarningMessage(this.t('Rebase "{0}" onto "{1}"? This rewrites commit history.', current, ref.name), { modal: true }, rebase);
-    if (choice === rebase) await this.runResult(await this.operations.rebaseCurrentOnto(ref.name), this.t('Rebased {0} onto {1}.', current, ref.name));
+    const current = this.currentBranch;
+    if (!current) throw new Error(this.t('Check out a local branch before rebasing.'));
+    const rebase = this.t('Rebase');
+    const choice = await vscode.window.showWarningMessage(
+      this.t('Rebase "{0}" onto "{1}"? This rewrites commit history.', current, ref.name),
+      { modal: true },
+      rebase,
+    );
+    if (choice === rebase)
+      await this.runResult(
+        await this.operations.rebaseCurrentOnto(ref.name),
+        this.t('Rebased {0} onto {1}.', current, ref.name),
+      );
   }
   private async deleteLocal(ref: GitRef): Promise<void> {
-    const remove = this.t('Delete'); const choice = await vscode.window.showWarningMessage(this.t('Delete local branch "{0}"?', ref.name), { modal: true }, remove); if (choice !== remove) return;
+    const remove = this.t('Delete');
+    const choice = await vscode.window.showWarningMessage(
+      this.t('Delete local branch "{0}"?', ref.name),
+      { modal: true },
+      remove,
+    );
+    if (choice !== remove) return;
     let result = await this.operations.deleteLocalBranch(ref.name);
-    if (!result.success && result.errorType === 'branchNotMerged') { const forceDelete = this.t('Force Delete'); const force = await vscode.window.showWarningMessage(this.t('Branch has unmerged commits. Force delete "{0}"? This may permanently remove commits.', ref.name), { modal: true }, forceDelete); if (force === forceDelete) result = await this.operations.deleteLocalBranch(ref.name, true); }
+    if (!result.success && result.errorType === 'branchNotMerged') {
+      const forceDelete = this.t('Force Delete');
+      const force = await vscode.window.showWarningMessage(
+        this.t(
+          'Branch has unmerged commits. Force delete "{0}"? This may permanently remove commits.',
+          ref.name,
+        ),
+        { modal: true },
+        forceDelete,
+      );
+      if (force === forceDelete) result = await this.operations.deleteLocalBranch(ref.name, true);
+    }
     await this.runResult(result, this.t('Deleted {0}.', ref.name));
   }
   private async deleteRemote(ref: GitRef): Promise<void> {
-    const slash=ref.name.indexOf('/'); if (slash < 1) throw new Error(this.t('Cannot determine the remote branch.')); const remote=ref.name.slice(0,slash), branch=ref.name.slice(slash+1);
-    const remove = this.t('Delete'); const choice=await vscode.window.showWarningMessage(this.t('Delete remote branch?\n\n{0}\n\nThis affects other users.', ref.name),{modal:true},remove); if(choice===remove) await this.runResult(await this.operations.deleteRemoteBranch(remote,branch),this.t('Deleted {0}.', ref.name));
+    const slash = ref.name.indexOf('/');
+    if (slash < 1) throw new Error(this.t('Cannot determine the remote branch.'));
+    const remote = ref.name.slice(0, slash),
+      branch = ref.name.slice(slash + 1);
+    const remove = this.t('Delete');
+    const choice = await vscode.window.showWarningMessage(
+      this.t('Delete remote branch?\n\n{0}\n\nThis affects other users.', ref.name),
+      { modal: true },
+      remove,
+    );
+    if (choice === remove)
+      await this.runResult(
+        await this.operations.deleteRemoteBranch(remote, branch),
+        this.t('Deleted {0}.', ref.name),
+      );
   }
-  private async pickRemote(title: string): Promise<string | undefined> { const output=await this.git.run(['remote']); const remotes=output.split('\n').filter(Boolean); return vscode.window.showQuickPick(remotes,{title}); }
-  private async runResult(result: import('../git/BranchOperationService').GitCommandResult, success: string): Promise<void> { if (!result.success) throw new Error(result.stderr?.trim() || this.t('Git operation failed.')); this.post({type:'operationResult',message:success}); await this.load(); }
+  private async pickRemote(title: string): Promise<string | undefined> {
+    const output = await this.git.run(['remote']);
+    const remotes = output.split('\n').filter(Boolean);
+    return vscode.window.showQuickPick(remotes, { title });
+  }
+  private async runResult(
+    result: import('../git/BranchOperationService').GitCommandResult,
+    success: string,
+  ): Promise<void> {
+    if (!result.success) throw new Error(result.stderr?.trim() || this.t('Git operation failed.'));
+    this.post({ type: 'operationResult', message: success });
+    await this.load();
+  }
   private localBranchName(ref: string): string {
     this.assertKnownRef(ref);
-    const selected = this.refs.find(candidate => candidate.fullName === ref);
-    if (selected?.type !== 'localBranch') throw new Error(this.t('Switch and merge operations are available only for local branches.'));
+    const selected = this.refs.find((candidate) => candidate.fullName === ref);
+    if (selected?.type !== 'localBranch')
+      throw new Error(this.t('Switch and merge operations are available only for local branches.'));
     return selected.name;
   }
   private assertKnownRef(ref: string): void {
-    if (!this.refs.some(candidate => candidate.fullName === ref)) {
-      throw new Error(this.t('The selected ref no longer exists. Refresh the viewer and try again.'));
+    if (!this.refs.some((candidate) => candidate.fullName === ref)) {
+      throw new Error(
+        this.t('The selected ref no longer exists. Refresh the viewer and try again.'),
+      );
     }
   }
   private assertKnownCommit(commit: string): void {
@@ -307,8 +683,12 @@ export class TopologyPanel {
       throw new Error(this.t('The selected commit is invalid. Refresh the viewer and try again.'));
     }
   }
-  private t(message: string, ...args: Array<string | number | boolean>): string { return vscode.l10n.t(message, ...args); }
-  private post(value: unknown) { void this.panel.webview.postMessage(value); }
+  private t(message: string, ...args: Array<string | number | boolean>): string {
+    return vscode.l10n.t(message, ...args);
+  }
+  private post(value: unknown) {
+    void this.panel.webview.postMessage(value);
+  }
   private html(webview: vscode.Webview, extensionUri: vscode.Uri): string {
     const script = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.js'));
     const style = webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'webview.css'));

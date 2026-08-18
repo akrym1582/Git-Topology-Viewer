@@ -27,8 +27,15 @@ describe('BranchOperationService', () => {
   });
 
   it('normalizes a Git failure without throwing a CLI exception into the UI', async () => {
-    const run = vi.fn().mockRejectedValue(new GitError('raw command failed', 'error: local changes would be overwritten\n'));
-    await expect(serviceWith(run).switchTo('topic')).resolves.toMatchObject({ success: false, errorType: 'dirtyWorkingTree' });
+    const run = vi
+      .fn()
+      .mockRejectedValue(
+        new GitError('raw command failed', 'error: local changes would be overwritten\n'),
+      );
+    await expect(serviceWith(run).switchTo('topic')).resolves.toMatchObject({
+      success: false,
+      errorType: 'dirtyWorkingTree',
+    });
   });
 
   it('pushes the selected branch to its upstream remote', async () => {

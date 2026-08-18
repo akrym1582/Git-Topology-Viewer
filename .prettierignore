@@ -1,0 +1,9 @@
+.git
+.agents
+node_modules
+dist
+*.vsix
+debug.log
+docs/images
+**/*.md
+LICENSE

@@ -1,5 +1,5 @@
 import { chromium } from '@playwright/test';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..');
@@ -17,7 +17,10 @@ const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128
 const browser = await chromium.launch({ headless: true });
 
 try {
-  const page = await browser.newPage({ viewport: { width: 128, height: 128 }, deviceScaleFactor: 1 });
+  const page = await browser.newPage({
+    viewport: { width: 128, height: 128 },
+    deviceScaleFactor: 1,
+  });
   await page.setContent(`<body style="margin:0">${iconSvg}</body>`);
   await page.screenshot({ path: outputPath, omitBackground: false });
 } finally {

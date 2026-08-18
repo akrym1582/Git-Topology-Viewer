@@ -73,8 +73,8 @@
   "Cannot determine the remote branch.": "リモートブランチを特定できません。",
   "Delete remote branch?\n\n{0}\n\nThis affects other users.": "リモートブランチを削除しますか？\n\n{0}\n\nこの操作は他のユーザーに影響します。",
   "Git operation failed.": "Git 操作に失敗しました。",
-  "Switch and merge operations are available only for local branches.": "切り替えとマージはローカルブランチでのみ実行できます。"
-  ,"Open Changes": "変更を表示",
+  "Switch and merge operations are available only for local branches.": "切り替えとマージはローカルブランチでのみ実行できます。",
+  "Open Changes": "変更を表示",
   "Checkout (Detached)": "チェックアウト（Detached）",
   "Create Tag…": "タグを作成…",
   "Cherry Pick": "チェリーピック",
