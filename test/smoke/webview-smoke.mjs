@@ -50,6 +50,14 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5);
   if (await page.locator('.commit-group').count() !== 1) throw new Error('Expected the linear commit range to render as one summary group');
   await page.screenshot({ path: join(imageDir, 'smoke-significant-commits.png'), fullPage: true });
+  const summaryCheckbox = page.getByRole('checkbox', { name: 'コミットを概要表示' });
+  const allCommitsCheckbox = page.getByRole('checkbox', { name: 'すべてのコミットを表示' });
+  await summaryCheckbox.uncheck();
+  await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5 && document.querySelectorAll('.commit-group').length === 0);
+  await allCommitsCheckbox.check();
+  await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 7 && document.querySelectorAll('.commit-group').length === 0);
+  await allCommitsCheckbox.uncheck(); await summaryCheckbox.check();
+  await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5 && document.querySelectorAll('.commit-group').length === 1);
   await page.getByRole('tab', { name: 'Git 関係図' }).click();
 
   await page.evaluate(() => window.__dispatchGraph(true, false, false));

@@ -47,4 +47,19 @@ describe('SignificantCommitGraphBuilder', () => {
       { from: 'commit-group:newer:middle:older', to: 'root' }
     ]);
   });
+
+  it('can omit ordinary linear commits while preserving structural nodes', () => {
+    const nodes = new Map([
+      ['tip', { id: 'tip', parents: ['newer'], refs: [ref('main', 'tip')] }],
+      ['newer', { id: 'newer', parents: ['middle'], refs: [] }],
+      ['middle', { id: 'middle', parents: ['root'], refs: [] }],
+      ['root', { id: 'root', parents: [], refs: [] }]
+    ]);
+    const graph: CommitGraph = { nodes, order: ['tip', 'newer', 'middle', 'root'] };
+
+    const view = new SignificantCommitGraphBuilder().build(graph, undefined, { summarizeLinearCommits: false });
+
+    expect(view.nodes.map(node => node.id)).toEqual(['tip', 'root']);
+    expect(view.edges).toEqual([{ from: 'tip', to: 'root' }]);
+  });
 });

@@ -50,7 +50,8 @@ export class TopologyPanel {
     this.relation = new BranchRelationBuilder().build(this.graph, this.refVisibility);
     this.commitView = new CommitGraphBuilder().build(this.graph, this.refVisibility);
     const significantGraph = new SignificantCommitGraphBuilder().build(this.graph, this.refVisibility);
-    this.post({ type: 'graph', payload: { graph: this.relation, significantGraph, commitGraph: this.commitView, refs: this.refs, branchStatuses: this.branchStatuses, repository: path.basename(this.root), currentBranch: this.currentBranch, compareBase: this.compareBase, mergeBaseIds: this.mergeBaseIds, focusedRef: this.focusedRef } });
+    const minimalGraph = new SignificantCommitGraphBuilder().build(this.graph, this.refVisibility, { summarizeLinearCommits: false });
+    this.post({ type: 'graph', payload: { graph: this.relation, significantGraph, minimalGraph, commitGraph: this.commitView, refs: this.refs, branchStatuses: this.branchStatuses, repository: path.basename(this.root), currentBranch: this.currentBranch, compareBase: this.compareBase, mergeBaseIds: this.mergeBaseIds, focusedRef: this.focusedRef } });
   }
   private receiveMessage(message: unknown): void {
     if (!isWebviewRequest(message)) {

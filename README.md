@@ -10,6 +10,7 @@ A VS Code extension for understanding relationships between branches and tags fr
 - Each ref group has one edge to its nearest older visible ref in the Git DAG.
 - A switchable commit-history graph that renders every loaded commit and direct parent edge, including merge lanes.
 - The **Branches & merges** view groups ordinary linear commits into one summary node while preserving branch and merge points.
+- Its options can hide ordinary commits entirely or show every commit instead of the summary nodes.
 - No commit-range expansion controls.
 - Select a ref to inspect its history; non-`main` branches start at their merge-base with the nearest relation target, while `main` shows its full history.
 - Ref comparison with merge base, unique commits, line statistics, and changed files.

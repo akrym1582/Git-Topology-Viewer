@@ -10,9 +10,14 @@ interface LinearCommitGroup {
 
 const LANE_WIDTH = 180;
 
+export interface SignificantCommitGraphOptions {
+  summarizeLinearCommits?: boolean;
+}
+
 /** Groups ordinary linear commits while retaining refs, forks, merges, and roots. */
 export class SignificantCommitGraphBuilder {
-  build(graph: CommitGraph, visibility: RefVisibility = { tags: true, remotes: false }): CommitViewGraph {
+  build(graph: CommitGraph, visibility: RefVisibility = { tags: true, remotes: false }, options: SignificantCommitGraphOptions = {}): CommitViewGraph {
+    const summarizeLinearCommits = options.summarizeLinearCommits ?? true;
     const full = new CommitGraphBuilder().build(graph, visibility);
     const fullNodes = new Map(full.nodes.map(node => [node.id, node]));
     const childCounts = new Map<string, number>();
@@ -25,17 +30,19 @@ export class SignificantCommitGraphBuilder {
       return (visibleRefsByCommit.get(id)?.length ?? 0) > 0 || node.parents.length !== 1 || (childCounts.get(id) ?? 0) > 1;
     }));
     const lanes = new CommitGraphBuilder().lanesFor(graph);
-    for (const id of [...significant]) {
-      for (const parent of graph.nodes.get(id)!.parents) {
-        const group = this.groupAfter(parent, graph, significant, lanes);
-        if (group?.commitIds.length === 1) significant.add(group.commitIds[0]);
+    if (summarizeLinearCommits) {
+      for (const id of [...significant]) {
+        for (const parent of graph.nodes.get(id)!.parents) {
+          const group = this.groupAfter(parent, graph, significant, lanes);
+          if (group?.commitIds.length === 1) significant.add(group.commitIds[0]);
+        }
       }
     }
     const groupsBySource = new Map<string, LinearCommitGroup[]>();
     for (const id of graph.order.filter(candidate => significant.has(candidate))) {
       const groups = graph.nodes.get(id)!.parents
         .map(parent => this.groupAfter(parent, graph, significant, lanes))
-        .filter((group): group is LinearCommitGroup => Boolean(group && group.commitIds.length > 1));
+        .filter((group): group is LinearCommitGroup => Boolean(group));
       if (groups.length) groupsBySource.set(id, groups);
     }
 
@@ -44,6 +51,7 @@ export class SignificantCommitGraphBuilder {
       const node = fullNodes.get(id)!;
       const rendered = [{ ...node, row: 0, y: 0 }];
       for (const group of groupsBySource.get(id) ?? []) {
+        if (!summarizeLinearCommits || group.commitIds.length === 1) continue;
         rendered.push({
           id: group.id,
           refs: [],
@@ -62,10 +70,10 @@ export class SignificantCommitGraphBuilder {
       return source.parents.flatMap(parent => {
         const group = groupsBySource.get(from)?.find(candidate => candidate.commitIds[0] === parent);
         if (!group) return significant.has(parent) ? [{ from, to: parent }] : [];
-        return [
-          { from, to: group.id },
-          ...(group.target ? [{ from: group.id, to: group.target }] : [])
-        ];
+        if (!summarizeLinearCommits || group.commitIds.length === 1) {
+          return group.target ? [{ from, to: group.target }] : [];
+        }
+        return [{ from, to: group.id }, ...(group.target ? [{ from: group.id, to: group.target }] : [])];
       });
     });
     return { nodes, edges };

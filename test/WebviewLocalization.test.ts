@@ -13,6 +13,8 @@ describe('webview localization', () => {
     expect(strings.commitsAndRefs(3, 2)).toBe('3 件のコミット · 2 個の参照');
     expect(strings.commitGroup(4)).toBe('4 件');
     expect(strings.commitGroupAriaLabel(4)).toBe('4 件の連続したコミットの概要');
+    expect(strings.summarizeCommits).toBe('コミットを概要表示');
+    expect(strings.showAllCommits).toBe('すべてのコミットを表示');
     expect(strings.readingRelations).toBe('ブランチの関係を読み込み中…');
     expect(strings.branchPoint).toBe('分岐点');
   });
