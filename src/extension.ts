@@ -7,7 +7,7 @@ import { TopologyPanel } from './vscode/TopologyPanel';
 
 export function activate(context: vscode.ExtensionContext) {
   const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  statusBarItem.text = '$(graph) Git Topology';
+  statusBarItem.text = '$(git-branch) Git Topology';
   statusBarItem.tooltip = vscode.l10n.t('Open Git Topology Viewer');
   statusBarItem.command = 'gitTopology.open';
   statusBarItem.show();
