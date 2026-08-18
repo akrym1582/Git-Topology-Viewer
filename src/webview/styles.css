@@ -29,9 +29,13 @@ header { height: 64px; display: flex; align-items: center; padding: 0 22px; bord
 .inspector-resizer:focus-visible::after { border-right-color: var(--accent); }
 .edges path { fill: none; stroke: #647189; stroke-width: 2; }
 .commit-edges path { stroke: #70809b; stroke-width: 2.5; }
+.commit-node { cursor: pointer; outline: none; }
 .commit-node circle { fill: #151b25; stroke: #8ca1c4; stroke-width: 2; }
+.commit-node:hover circle, .commit-node:focus-visible circle, .commit-node.selected circle { fill: #235746; stroke: var(--accent); }
 .commit-node .commit-id { fill: #aeb9cc; font-family: monospace; font-size: 10px; }
+.commit-group { cursor: pointer; outline: none; }
 .commit-group .group-badge { fill: #202c3c; stroke: #8ca1c4; stroke-width: 2; }
+.commit-group:hover .group-badge, .commit-group:focus-visible .group-badge { fill: #235746; stroke: var(--accent); }
 .commit-group .group-label { fill: #e9eef8; font-size: 9px; font-weight: 600; }
 .commit-group .group-range { fill: #9aa5ba; font-family: monospace; font-size: 9px; }
 .ref { cursor: pointer; outline: none; }
@@ -90,6 +94,13 @@ aside { min-width: 0; background: var(--panel); overflow: auto; }
 .log-entry span { overflow-wrap: anywhere; color: #c9d0dc; }
 .commit-files { margin: 0 0 12px; padding: 0 8px 8px; border: 1px solid #354158; border-top: 0; background: #111720; }
 .commit-files .metrics { margin: 0 -8px 8px; }
+.loading-details { color: var(--muted); }
+.commit-list { border: 1px solid #354158; background: #111720; }
+.commit-list button { width: 100%; display: flex; gap: 8px; align-items: baseline; border: 0; border-top: 1px solid #2d3440; background: transparent; padding: 9px 10px; text-align: left; }
+.commit-list button:first-child { border-top: 0; }
+.commit-list button:hover, .commit-list button.selected { background: #202837; }
+.commit-list button code { flex: 0 0 auto; }
+.commit-list button span { color: #c9d0dc; overflow-wrap: anywhere; }
 .added, .files ins { color: #5bdb95; text-decoration: none; }
 .removed, .files del { color: #f37981; text-decoration: none; }
 .context-group { text-transform: uppercase; color: var(--accent); font-size: 9px; font-weight: 700; letter-spacing: 1px; padding: 8px 10px 3px; border-top: 1px solid #394150; }

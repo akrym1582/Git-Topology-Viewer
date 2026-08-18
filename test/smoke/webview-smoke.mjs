@@ -48,9 +48,27 @@ try {
   await summaryCheckbox.uncheck();
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5 && document.querySelectorAll('.commit-group').length === 0);
   await allCommitsCheckbox.check();
-  await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 7 && document.querySelectorAll('.commit-group').length === 0);
+  await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 10 && document.querySelectorAll('.commit-group').length === 0);
   await allCommitsCheckbox.uncheck(); await summaryCheckbox.check();
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5 && document.querySelectorAll('.commit-group').length === 1);
+
+  let request;
+  await page.locator('.commit-group .group-badge').click();
+  if (await page.locator('.commit-list button').count() !== 5) throw new Error('Expected every summarized commit to be listed in the details pane');
+  await page.getByRole('button', { name: 'b16a9821234567890 の変更を表示' }).click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'showCommitDetails' || request.commit !== 'b16a9821234567890') throw new Error(`Unexpected summarized commit details request: ${JSON.stringify(request)}`);
+  await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeGroupCommitDetails })));
+  await page.getByText('src/LoginForm.tsx').waitFor();
+  await page.getByRole('button', { name: /src\/LoginForm\.tsx/ }).click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'openDiff' || request.left !== 'b16a9821234567890' || request.right !== 'c16a9821234567890' || request.path !== 'src/LoginForm.tsx') throw new Error(`Unexpected commit diff request: ${JSON.stringify(request)}`);
+
+  await page.locator('.commit-node').first().locator('circle').click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'showCommitDetails' || request.commit !== 'f41acde1234567890') throw new Error(`Unexpected individual commit details request: ${JSON.stringify(request)}`);
+  await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeCommitDetails })));
+  await page.getByText('src/AuthService.ts').waitFor();
 
   await page.getByRole('button', { name: '詳細を隠す' }).click();
   if (await page.locator('aside').count()) throw new Error('Expected the details pane to be hidden');
@@ -58,7 +76,6 @@ try {
   await page.getByRole('button', { name: '詳細を表示' }).click();
   await page.locator('aside').waitFor();
 
-  let request;
   await page.getByText('リモートブランチ').click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'setRefVisibility' || request.tags !== true || request.remotes !== true) throw new Error(`Unexpected ref visibility request: ${JSON.stringify(request)}`);
@@ -76,7 +93,7 @@ try {
   if (request?.type !== 'showRefLog' || request.ref !== 'refs/heads/main') throw new Error(`Unexpected history request: ${JSON.stringify(request)}`);
   await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeMainLog })));
   await page.getByRole('heading', { name: 'コミット履歴' }).waitFor();
-  await page.getByRole('button', { name: 'f41acde1234567890 の変更を表示' }).click();
+  await page.locator('.log-entry').filter({ hasText: 'Polish relationship view' }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'showCommitDetails' || request.commit !== 'f41acde1234567890') throw new Error(`Unexpected commit details request: ${JSON.stringify(request)}`);
   await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeCommitDetails })));
