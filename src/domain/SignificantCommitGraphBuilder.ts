@@ -25,11 +25,17 @@ export class SignificantCommitGraphBuilder {
       return (visibleRefsByCommit.get(id)?.length ?? 0) > 0 || node.parents.length !== 1 || (childCounts.get(id) ?? 0) > 1;
     }));
     const lanes = new CommitGraphBuilder().lanesFor(graph);
+    for (const id of [...significant]) {
+      for (const parent of graph.nodes.get(id)!.parents) {
+        const group = this.groupAfter(parent, graph, significant, lanes);
+        if (group?.commitIds.length === 1) significant.add(group.commitIds[0]);
+      }
+    }
     const groupsBySource = new Map<string, LinearCommitGroup[]>();
     for (const id of graph.order.filter(candidate => significant.has(candidate))) {
       const groups = graph.nodes.get(id)!.parents
         .map(parent => this.groupAfter(parent, graph, significant, lanes))
-        .filter((group): group is LinearCommitGroup => Boolean(group));
+        .filter((group): group is LinearCommitGroup => Boolean(group && group.commitIds.length > 1));
       if (groups.length) groupsBySource.set(id, groups);
     }
 

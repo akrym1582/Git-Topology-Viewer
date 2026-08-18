@@ -79,8 +79,8 @@ try {
 
   await page.getByRole('tab', { name: 'コミット履歴' }).click();
   await page.locator('.commit-node').first().waitFor();
-  if (await page.locator('.commit-node').count() !== 6) throw new Error('Expected every fixture commit in commit history mode');
-  if (await page.locator('.commit-edges path').count() !== 6) throw new Error('Expected all direct parent edges in commit history mode');
+  if (await page.locator('.commit-node').count() !== 7) throw new Error('Expected every fixture commit in commit history mode');
+  if (await page.locator('.commit-edges path').count() !== 7) throw new Error('Expected all direct parent edges in commit history mode');
   const mergeEdges = await page.locator('.commit-edges path').evaluateAll(paths => paths.filter(path => path.getAttribute('d')?.includes('250')).length);
   if (mergeEdges < 2) throw new Error('Expected visible divergence and merge lanes in commit history mode');
   await page.screenshot({ path: join(imageDir, 'smoke-commit-history.png'), fullPage: true });

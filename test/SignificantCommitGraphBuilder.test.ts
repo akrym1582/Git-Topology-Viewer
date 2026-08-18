@@ -18,13 +18,13 @@ describe('SignificantCommitGraphBuilder', () => {
 
     const view = new SignificantCommitGraphBuilder().build(graph);
 
-    expect(view.nodes.map(node => node.id)).toEqual(['tip', 'merge', 'commit-group:trunk', 'feature', 'branch', 'commit-group:ordinary', 'root']);
-    expect(view.nodes.find(node => node.id === 'commit-group:trunk')?.commitIds).toEqual(['trunk']);
-    expect(view.nodes.find(node => node.id === 'commit-group:ordinary')?.commitIds).toEqual(['ordinary']);
+    expect(view.nodes.map(node => node.id)).toEqual(['tip', 'merge', 'trunk', 'feature', 'branch', 'ordinary', 'root']);
+    expect(view.nodes.find(node => node.id === 'trunk')?.commitIds).toBeUndefined();
+    expect(view.nodes.find(node => node.id === 'ordinary')?.commitIds).toBeUndefined();
     expect(view.edges).toEqual([
-      { from: 'tip', to: 'merge' }, { from: 'merge', to: 'commit-group:trunk' }, { from: 'commit-group:trunk', to: 'branch' },
-      { from: 'merge', to: 'feature' }, { from: 'feature', to: 'branch' }, { from: 'branch', to: 'commit-group:ordinary' },
-      { from: 'commit-group:ordinary', to: 'root' }
+      { from: 'tip', to: 'merge' }, { from: 'merge', to: 'trunk' }, { from: 'merge', to: 'feature' },
+      { from: 'trunk', to: 'branch' }, { from: 'feature', to: 'branch' }, { from: 'branch', to: 'ordinary' },
+      { from: 'ordinary', to: 'root' }
     ]);
   });
 
