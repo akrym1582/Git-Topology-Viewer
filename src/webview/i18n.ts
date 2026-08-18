@@ -33,8 +33,6 @@ export interface WebviewStrings {
   comparingRefs: string;
   copyName: string;
   compareWith: string;
-  changesSinceDivergence: string;
-  currentSnapshots: string;
   comparisonLoading: string;
   commitHistory: string;
   branchPoint: string;
@@ -99,8 +97,6 @@ const english: WebviewStrings = {
   comparingRefs: 'COMPARING REFS',
   copyName: 'Copy name',
   compareWith: 'Compare with',
-  changesSinceDivergence: 'Changes since divergence',
-  currentSnapshots: 'Current snapshots',
   comparisonLoading: 'Comparing refs…',
   commitHistory: 'Commit history',
   branchPoint: 'BRANCH POINT',
@@ -167,8 +163,6 @@ const japanese: WebviewStrings = {
   comparingRefs: '参照を比較中',
   copyName: '名前をコピー',
   compareWith: '比較対象',
-  changesSinceDivergence: '分岐後の変更',
-  currentSnapshots: '現在のスナップショット',
   comparisonLoading: '参照を比較中…',
   commitHistory: 'コミット履歴',
   branchPoint: '分岐点',

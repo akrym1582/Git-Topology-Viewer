@@ -169,10 +169,10 @@ export function App() {
   };
   const adjustInspectorWidth = (delta: number) =>
     setInspectorWidth((width) => clampInspectorWidth(width + delta));
-  const requestComparison = (left: string, right: string, mode: 'divergence' | 'snapshot') => {
+  const requestComparison = (left: string, right: string) => {
     setComparison(undefined);
     setComparisonLoading(true);
-    vscode.postMessage({ type: 'compareRefs', left, right, mode });
+    vscode.postMessage({ type: 'compareRefs', left, right, mode: 'snapshot' });
   };
   const selectRef = (ref: GitRef, additive: boolean) => {
     setComparison(undefined);
@@ -194,7 +194,7 @@ export function App() {
     }
     const next = [...without.slice(-1), ref];
     setSelected(next);
-    if (next.length === 2) requestComparison(next[0].fullName, next[1].fullName, 'snapshot');
+    if (next.length === 2) requestComparison(next[0].fullName, next[1].fullName);
   };
   const closeCommitDetails = (commit: string) => {
     setExpandedCommitDetails((current) => {
@@ -840,20 +840,23 @@ function Inspector({
   onSelectCommit: (commit: string) => void;
   onCloseCommitDetails: (commit: string) => void;
   onContextMenuCommit: (commit: string, event: MouseEvent) => void;
-  onCompare: (left: string, right: string, mode: 'divergence' | 'snapshot') => void;
+  onCompare: (left: string, right: string) => void;
   onClose: () => void;
 }) {
   const primary = selected[0];
   const selectedOther = selected[1]?.fullName;
   const fallbackOther = refs.find((ref) => ref.fullName !== primary?.fullName)?.fullName ?? '';
-  const [otherOverride, setOtherOverride] = useState<string>();
-  useEffect(() => setOtherOverride(undefined), [primary?.fullName, selectedOther]);
+  const selectionKey = `${primary?.fullName ?? ''}:${selectedOther ?? ''}`;
+  const [otherOverride, setOtherOverride] = useState<
+    { selectionKey: string; value: string } | undefined
+  >();
+  const selectedOverride =
+    otherOverride?.selectionKey === selectionKey ? otherOverride.value : undefined;
   const other =
-    otherOverride &&
-    refs.some((ref) => ref.fullName === otherOverride && ref.fullName !== primary?.fullName)
-      ? otherOverride
+    selectedOverride &&
+    refs.some((ref) => ref.fullName === selectedOverride && ref.fullName !== primary?.fullName)
+      ? selectedOverride
       : (selectedOther ?? fallbackOther);
-  const [mode, setMode] = useState<'divergence' | 'snapshot'>('snapshot');
   if (!primary && selectedCommitGroup)
     return (
       <CommitGroupInspector
@@ -932,8 +935,8 @@ function Inspector({
             value={other}
             onChange={(event) => {
               const nextOther = event.target.value;
-              setOtherOverride(nextOther);
-              onCompare(primary.fullName, nextOther, mode);
+              setOtherOverride({ selectionKey, value: nextOther });
+              onCompare(primary.fullName, nextOther);
             }}
           >
             {refs
@@ -944,28 +947,6 @@ function Inspector({
                 </option>
               ))}
           </select>
-          <label className="radio">
-            <input
-              type="radio"
-              checked={mode === 'divergence'}
-              onChange={() => {
-                setMode('divergence');
-                if (other) onCompare(primary.fullName, other, 'divergence');
-              }}
-            />{' '}
-            {ui.changesSinceDivergence}
-          </label>
-          <label className="radio">
-            <input
-              type="radio"
-              checked={mode === 'snapshot'}
-              onChange={() => {
-                setMode('snapshot');
-                if (other) onCompare(primary.fullName, other, 'snapshot');
-              }}
-            />{' '}
-            {ui.currentSnapshots}
-          </label>
           {comparisonLoading && (
             <p className="loading-details comparison-loading" role="status">
               {ui.comparisonLoading}
@@ -974,8 +955,7 @@ function Inspector({
           {!comparisonLoading &&
             comparison &&
             comparison.left === primary.fullName &&
-            comparison.right === other &&
-            comparison.mode === mode && (
+            comparison.right === other && (
               <Comparison
                 key={`${comparison.left}:${comparison.right}:${comparison.mode}`}
                 ui={ui}
@@ -1233,20 +1213,6 @@ function Comparison({ ui, value }: { ui: WebviewStrings; value: BranchComparison
       <div className="base">
         <small>{ui.mergeBase}</small>
         <code>{value.mergeBases[0]?.slice(0, 9) ?? ui.none}</code>
-      </div>
-      <div className="metrics">
-        <div>
-          <b>+{value.ahead}</b>
-          <small>{ui.onlyLeft}</small>
-        </div>
-        <div>
-          <b>{value.behind}</b>
-          <small>{ui.onlyRight}</small>
-        </div>
-        <div>
-          <b>{value.files.length}</b>
-          <small>{ui.files}</small>
-        </div>
       </div>
       <p className="stat">
         <ins>+{value.additions}</ins> <del>−{value.deletions}</del>
