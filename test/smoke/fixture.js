@@ -55,6 +55,7 @@ window.__smokeGroupCommitSummaries = { type: 'commitGroupDetails', payload: { co
   { id: 'f16a9821234567890', subject: 'Add login tests', committer: 'Feature Bot', date: '2024-12-31T03:04:05+09:00' }
 ] } };
 window.__smokeGroupCommitDetails = { type: 'commitDetails', payload: { commit: { id: 'b16a9821234567890', subject: 'Add login validation' }, parent: 'c16a9821234567890', additions: 3, deletions: 1, files: [{ status: 'M', path: 'src/LoginForm.tsx', additions: 3, deletions: 1 }] } };
+window.__smokeSecondGroupCommitDetails = { type: 'commitDetails', payload: { commit: { id: 'c16a9821234567890', subject: 'Add login form' }, parent: 'd16a9821234567890', additions: 5, deletions: 2, files: [{ status: 'A', path: 'src/LoginDialog.tsx', additions: 5, deletions: 0 }] } };
 
 let handledMenuRequests = 0;
 setInterval(() => {

@@ -2,6 +2,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: #e8ebf2; font: 13px var(--vscode-font-family, Inter, system-ui, sans-serif); }
 button, input, select { font: inherit; color: inherit; }
+button:not(:disabled), select, input[type=checkbox]:not(:disabled), input[type=radio]:not(:disabled), [role="button"] { cursor: pointer; }
 .app { height: 100vh; display: flex; flex-direction: column; }
 header { height: 64px; display: flex; align-items: center; padding: 0 22px; border-bottom: 1px solid #282e3a; background: #141821; }
 .brand { display: flex; gap: 11px; align-items: center; min-width: 280px; }
@@ -13,7 +14,7 @@ header { height: 64px; display: flex; align-items: center; padding: 0 22px; bord
 .modes .active { background: #303848; color: #fff; }
 .refresh { margin-left: auto; border: 1px solid #384152; }
 .filters { height: 48px; display: flex; align-items: center; gap: 20px; padding: 0 22px; border-bottom: 1px solid #252b36; color: #b8c0d0; }
-.filters label { display: flex; gap: 7px; }
+.filters label { display: flex; gap: 7px; cursor: pointer; }
 .filters input[type=checkbox] { accent-color: var(--accent); }
 .filters .search { margin-left: 12px; background: #0c0f15; border: 1px solid #343c49; border-radius: 5px; padding: 7px 10px; width: 220px; }
 .filters span { margin-left: auto; color: var(--muted); }
@@ -96,8 +97,9 @@ aside { min-width: 0; background: var(--panel); overflow: auto; }
 .log-entry span { display: flex; flex-direction: column; gap: 3px; overflow-wrap: anywhere; color: #c9d0dc; }
 .log-entry span strong { font-weight: 500; }
 .commit-meta { color: var(--muted); font-size: 10px; }
-.commit-files { margin: 0 0 12px; padding: 0 8px 8px; border: 1px solid #354158; border-top: 0; background: #111720; }
+.commit-files { margin: 0 0 12px; padding: 32px 8px 8px; border: 1px solid #354158; border-top: 0; background: #111720; position: relative; }
 .commit-files .metrics { margin: 0 -8px 8px; }
+.close-commit-files { position: absolute; top: 4px; right: 4px; border: 0; background: transparent; font-size: 18px; line-height: 1; padding: 4px 7px; }
 .loading-details { color: var(--muted); }
 .commit-subject { margin: 8px 0 16px; color: #c9d0dc; white-space: pre-wrap; overflow-wrap: anywhere; }
 .added, .files ins { color: #5bdb95; text-decoration: none; }

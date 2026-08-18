@@ -71,6 +71,20 @@ try {
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'openDiff' || request.left !== 'b16a9821234567890' || request.right !== 'c16a9821234567890' || request.path !== 'src/LoginForm.tsx') throw new Error(`Unexpected commit diff request: ${JSON.stringify(request)}`);
 
+  await page.getByRole('button', { name: 'c16a9821234567890 の変更を表示' }).click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'showCommitDetails' || request.commit !== 'c16a9821234567890') throw new Error(`Unexpected second commit details request: ${JSON.stringify(request)}`);
+  await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeSecondGroupCommitDetails })));
+  await page.getByText('src/LoginDialog.tsx').waitFor();
+  if (await page.locator('.commit-files').count() !== 2) throw new Error('Selecting another commit must keep the previous file list open');
+  await page.getByRole('button', { name: '変更ファイルを閉じる' }).first().click();
+  if (await page.locator('.commit-files').count() !== 1) throw new Error('Closing one commit file list must keep the other one open');
+  await page.getByRole('button', { name: '変更ファイルを閉じる' }).first().click();
+  if (await page.locator('.commit-files').count()) throw new Error('Commit file lists must be closable');
+  await page.getByRole('button', { name: 'b16a9821234567890 の変更を表示' }).click();
+  await page.getByText('src/LoginForm.tsx').waitFor();
+  if (await page.locator('.commit-files').count() !== 1) throw new Error('A closed commit file list must reopen from cached details');
+
   await page.getByRole('button', { name: 'b16a9821234567890 の変更を表示' }).click({ button: 'right' });
   await page.getByRole('menuitem', { name: '変更を表示' }).waitFor();
   request = await page.evaluate(() => window.__vscodeMessages.filter(message => message?.type === 'contextMenu').at(-1));

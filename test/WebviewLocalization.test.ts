@@ -5,6 +5,7 @@ describe('webview localization', () => {
   it('uses Japanese strings for Japanese display language variants', () => {
     const strings = webviewStrings('ja-JP');
     expect(strings.refresh).toBe('更新');
+    expect(strings.closeCommitFiles).toBe('変更ファイルを閉じる');
     expect(strings.relationGraph).toBe('Git 関係図');
     expect(strings.significantGraph).toBe('分岐・マージ');
     expect(strings.significantGraphUnavailable).toContain('分岐・マージを読み込めません');
@@ -24,5 +25,6 @@ describe('webview localization', () => {
 
   it('falls back to English for unsupported display languages', () => {
     expect(webviewStrings('fr').refresh).toBe('Refresh');
+    expect(webviewStrings('fr').closeCommitFiles).toBe('Close changed files');
   });
 });
