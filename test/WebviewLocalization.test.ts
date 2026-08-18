@@ -22,7 +22,7 @@ describe('webview localization', () => {
     expect(strings.branchPoint).toBe('分岐点');
     expect(strings.currentBranchMarker).toBe('HEAD');
     expect(strings.comparisonLoading).toBe('参照を比較中…');
-    expect(strings.onlyRightCommits).toBe('右側のみのコミット');
+    expect(strings.noUniqueCommits).toBe('この側だけのコミットはありません。');
     expect(strings.commitMeta('山田', '2025/01/01')).toBe('山田 · 2025/01/01');
   });
 

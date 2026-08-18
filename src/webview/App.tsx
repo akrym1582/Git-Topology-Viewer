@@ -975,7 +975,13 @@ function Inspector({
             comparison &&
             comparison.left === primary.fullName &&
             comparison.right === other &&
-            comparison.mode === mode && <Comparison ui={ui} value={comparison} />}
+            comparison.mode === mode && (
+              <Comparison
+                key={`${comparison.left}:${comparison.right}:${comparison.mode}`}
+                ui={ui}
+                value={comparison}
+              />
+            )}
         </>
       )}
     </div>
@@ -1207,6 +1213,20 @@ function CommitFiles({
   );
 }
 function Comparison({ ui, value }: { ui: WebviewStrings; value: BranchComparison }) {
+  type ComparisonTab = 'files' | 'left' | 'right';
+  const [activeTab, setActiveTab] = useState<ComparisonTab>('files');
+  const tabRefs = React.useRef<Array<HTMLButtonElement | null>>([]);
+  const tabs: Array<{ id: ComparisonTab; label: string; count: number }> = [
+    { id: 'files', label: ui.changedFiles, count: value.files.length },
+    { id: 'left', label: ui.onlyLeft, count: value.onlyLeft.length },
+    { id: 'right', label: ui.onlyRight, count: value.onlyRight.length },
+  ];
+  const activateTab = (index: number) => {
+    const tab = tabs[index];
+    if (!tab) return;
+    setActiveTab(tab.id);
+    tabRefs.current[index]?.focus();
+  };
   return (
     <div className="results">
       <h3>{ui.comparison}</h3>
@@ -1231,54 +1251,91 @@ function Comparison({ ui, value }: { ui: WebviewStrings; value: BranchComparison
       <p className="stat">
         <ins>+{value.additions}</ins> <del>−{value.deletions}</del>
       </p>
-      <ComparisonCommitList ui={ui} title={ui.onlyLeftCommits} commits={value.onlyLeft} />
-      <ComparisonCommitList ui={ui} title={ui.onlyRightCommits} commits={value.onlyRight} />
-      <h3>{ui.changedFiles}</h3>
-      <div className="files">
-        {value.files.map((file) => (
+      <div className="comparison-tabs" role="tablist" aria-label={ui.comparison}>
+        {tabs.map((tab, index) => (
           <button
-            key={`${file.status}:${file.oldPath ?? ''}:${file.path}`}
-            onClick={() =>
-              vscode.postMessage({
-                type: 'openDiff',
-                left: value.left,
-                right: value.right,
-                path: file.path,
-                oldPath: file.oldPath,
-                status: file.status[0],
-              })
-            }
+            key={tab.id}
+            ref={(element) => {
+              tabRefs.current[index] = element;
+            }}
+            id={`comparison-tab-${tab.id}`}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`comparison-panel-${tab.id}`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
+            onClick={() => setActiveTab(tab.id)}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                activateTab((index + 1) % tabs.length);
+              }
+              if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                activateTab((index - 1 + tabs.length) % tabs.length);
+              }
+              if (event.key === 'Home') {
+                event.preventDefault();
+                activateTab(0);
+              }
+              if (event.key === 'End') {
+                event.preventDefault();
+                activateTab(tabs.length - 1);
+              }
+            }}
           >
-            <i className={file.status}>{file.status}</i>
-            <span>{file.path}</span>
+            {tab.label} ({tab.count})
           </button>
         ))}
+      </div>
+      <div
+        id={`comparison-panel-${activeTab}`}
+        className="comparison-tab-panel"
+        role="tabpanel"
+        aria-labelledby={`comparison-tab-${activeTab}`}
+      >
+        {activeTab === 'files' && <ComparisonFileList ui={ui} value={value} />}
+        {activeTab === 'left' && <ComparisonCommitList ui={ui} commits={value.onlyLeft} />}
+        {activeTab === 'right' && <ComparisonCommitList ui={ui} commits={value.onlyRight} />}
       </div>
     </div>
   );
 }
-function ComparisonCommitList({
-  ui,
-  title,
-  commits,
-}: {
-  ui: WebviewStrings;
-  title: string;
-  commits: CommitInfo[];
-}) {
-  if (!commits.length) return null;
+function ComparisonFileList({ ui, value }: { ui: WebviewStrings; value: BranchComparison }) {
+  if (!value.files.length) return <p className="comparison-empty">{ui.noFileChanges}</p>;
   return (
-    <section className="comparison-commits">
-      <h3>{title}</h3>
-      <div>
-        {commits.map((commit) => (
-          <div className="comparison-commit" key={commit.id}>
-            <code>{commit.id.slice(0, 8)}</code>
-            <span>{commit.subject || ui.none}</span>
-          </div>
-        ))}
-      </div>
-    </section>
+    <div className="files">
+      {value.files.map((file) => (
+        <button
+          key={`${file.status}:${file.oldPath ?? ''}:${file.path}`}
+          onClick={() =>
+            vscode.postMessage({
+              type: 'openDiff',
+              left: value.left,
+              right: value.right,
+              path: file.path,
+              oldPath: file.oldPath,
+              status: file.status[0],
+            })
+          }
+        >
+          <i className={file.status}>{file.status}</i>
+          <span>{file.path}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+function ComparisonCommitList({ ui, commits }: { ui: WebviewStrings; commits: CommitInfo[] }) {
+  if (!commits.length) return <p className="comparison-empty">{ui.noUniqueCommits}</p>;
+  return (
+    <div className="comparison-commits">
+      {commits.map((commit) => (
+        <div className="comparison-commit" key={commit.id}>
+          <code>{commit.id.slice(0, 8)}</code>
+          <span>{commit.subject || ui.none}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 function branchState(data: GraphPayload, ref: GitRef, ui: WebviewStrings): string {

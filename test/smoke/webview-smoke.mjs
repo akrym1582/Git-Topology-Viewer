@@ -382,9 +382,18 @@ try {
     window.dispatchEvent(new MessageEvent('message', { data: window.__smokeComparison })),
   );
   await page.getByRole('heading', { name: '比較', exact: true }).waitFor();
+  const changedFilesTab = page.getByRole('tab', { name: '変更されたファイル (3)', exact: true });
+  await changedFilesTab.waitFor();
+  if ((await changedFilesTab.getAttribute('aria-selected')) !== 'true')
+    throw new Error('Changed files must be the default comparison tab');
   await page.getByText('src/AuthService.ts').waitFor();
-  await page.getByRole('heading', { name: '右側のみのコミット', exact: true }).waitFor();
+  const onlyRightTab = page.getByRole('tab', { name: '右側のみ (3)', exact: true });
+  await onlyRightTab.click();
   await page.getByText('Update shared configuration', { exact: true }).waitFor();
+  await onlyRightTab.press('Home');
+  if ((await changedFilesTab.getAttribute('aria-selected')) !== 'true')
+    throw new Error('Home must return focus and selection to the changed-files tab');
+  await page.getByText('src/AuthService.ts').waitFor();
   await page.screenshot({
     path: join(imageDir, 'smoke-branch-comparison-context-menu.png'),
     fullPage: true,

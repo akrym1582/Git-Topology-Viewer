@@ -347,15 +347,36 @@ aside {
   color: #f37981;
   text-decoration: none;
 }
-.comparison-commits {
+.comparison-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 18px;
+  border-bottom: 1px solid #394251;
 }
-.comparison-commits h3 {
-  margin-bottom: 8px;
+.comparison-tabs button {
+  min-width: 0;
+  padding: 8px 4px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font-size: 10px;
 }
-.comparison-commits > div {
+.comparison-tabs button[aria-selected='true'] {
+  border-bottom-color: var(--accent);
+  background: #1b2430;
+  color: #e8ebf2;
+}
+.comparison-tab-panel {
+  min-height: 42px;
+}
+.comparison-commits {
   max-height: 230px;
   overflow-y: auto;
+}
+.comparison-empty {
+  margin-top: 18px;
+  color: var(--muted);
 }
 .comparison-commit {
   display: grid;
