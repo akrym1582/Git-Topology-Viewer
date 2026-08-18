@@ -38,12 +38,14 @@ from `domain` to an integration layer. Keep extension/webview messages serializa
    `src/domain`; keep presentation decisions in `src/webview`.
 3. Add or update tests for ref relationships, merges, lane behavior, parsing, or
    message contracts affected by the change.
-4. Run `pwsh -NoProfile -File .agents/skills/git-topology-development/scripts/validate.ps1` before commit.
-5. For a perceptible webview change, build and inspect it in VS Code or a browser
+4. Run `npm run format` after source changes, then run `npm run format:check` and
+   `npm run lint` so formatting and lint warnings are fixed before validation.
+5. Run `pwsh -NoProfile -File .agents/skills/git-topology-development/scripts/validate.ps1` before commit.
+6. For a perceptible webview change, build and inspect it in VS Code or a browser
    harness and capture a screenshot. Follow
    `.agents/skills/git-topology-webview-smoke-test/SKILL.md` and run
    `npm run smoke:webview` for the maintained browser harness.
-6. Commit source changes on the current branch. Do not commit `dist/`, temporary
+7. Commit source changes on the current branch. Do not commit `dist/`, temporary
    repositories, screenshots, or editor state unless explicitly requested.
 
 ## Coding conventions
@@ -75,6 +77,7 @@ from `domain` to an integration layer. Keep extension/webview messages serializa
 
 ## Required checks
 
-Run `pwsh -NoProfile -File .agents/skills/git-topology-development/scripts/validate.ps1`. If a command
-cannot run because of the environment, report it as a warning rather than silently
-skipping it. A passing build alone is not a substitute for tests.
+Run `npm run format:check`, `npm run lint`, and
+`pwsh -NoProfile -File .agents/skills/git-topology-development/scripts/validate.ps1`.
+If a command cannot run because of the environment, report it as a warning rather
+than silently skipping it. A passing build alone is not a substitute for tests.

@@ -12,8 +12,9 @@ describe('relationEdgePath', () => {
   });
 
   it('keeps a long relation in its source lane until the target approach', () => {
-    expect(relationEdgePath({ x: 131, y: 104 }, { x: 511, y: 316 }))
-      .toBe('M 131 104 L 131 244 C 131 280, 511 280, 511 316');
+    expect(relationEdgePath({ x: 131, y: 104 }, { x: 511, y: 316 })).toBe(
+      'M 131 104 L 131 244 C 131 280, 511 280, 511 316',
+    );
   });
 
   it('keeps a single relation centred on its target group', () => {

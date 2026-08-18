@@ -26,6 +26,20 @@ jobs:
       - name: Prepare artifact directory
         run: mkdir -p artifacts/ci
 
+      - name: Run format check
+        id: format_check
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run format:check 2>&1 | tee artifacts/ci/format-check.log
+
+      - name: Run lint
+        id: lint
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          npm run lint 2>&1 | tee artifacts/ci/lint.log
+
       - name: Run typecheck
         id: typecheck
         continue-on-error: true
@@ -73,11 +87,13 @@ jobs:
           retention-days: 14
 
       - name: Fail if a check failed
-        if: steps.typecheck.outcome == 'failure' || steps.unit_tests.outcome == 'failure' || steps.smoke_test.outcome == 'failure'
+        if: steps.format_check.outcome == 'failure' || steps.lint.outcome == 'failure' || steps.typecheck.outcome == 'failure' || steps.unit_tests.outcome == 'failure' || steps.smoke_test.outcome == 'failure'
         env:
+          FORMAT_CHECK_OUTCOME: ${{ steps.format_check.outcome }}
+          LINT_OUTCOME: ${{ steps.lint.outcome }}
           TYPECHECK_OUTCOME: ${{ steps.typecheck.outcome }}
           UNIT_TESTS_OUTCOME: ${{ steps.unit_tests.outcome }}
           SMOKE_TEST_OUTCOME: ${{ steps.smoke_test.outcome }}
         run: |
-          echo "::error::Checks failed: typecheck=${TYPECHECK_OUTCOME}, unit_tests=${UNIT_TESTS_OUTCOME}, smoke_test=${SMOKE_TEST_OUTCOME}"
+          echo "::error::Checks failed: format_check=${FORMAT_CHECK_OUTCOME}, lint=${LINT_OUTCOME}, typecheck=${TYPECHECK_OUTCOME}, unit_tests=${UNIT_TESTS_OUTCOME}, smoke_test=${SMOKE_TEST_OUTCOME}"
           exit 1

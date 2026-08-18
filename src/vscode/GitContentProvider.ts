@@ -11,6 +11,8 @@ export class GitContentProvider implements vscode.TextDocumentContentProvider {
     return this.diff.show(params.get('ref') ?? '', params.get('path') ?? '');
   }
   static uri(ref: string, path: string, side: 'left' | 'right', exists = true): vscode.Uri {
-    return vscode.Uri.parse(`${this.scheme}:/${encodeURIComponent(side)}/${encodeURIComponent(path)}?ref=${encodeURIComponent(ref)}&path=${encodeURIComponent(path)}&exists=${exists}`);
+    return vscode.Uri.parse(
+      `${this.scheme}:/${encodeURIComponent(side)}/${encodeURIComponent(path)}?ref=${encodeURIComponent(ref)}&path=${encodeURIComponent(path)}&exists=${exists}`,
+    );
   }
 }
