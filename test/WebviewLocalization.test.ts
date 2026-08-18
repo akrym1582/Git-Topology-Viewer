@@ -21,6 +21,7 @@ describe('webview localization', () => {
     expect(strings.loadingRefHistory).toBe('コミット履歴を読み込み中…');
     expect(strings.branchPoint).toBe('分岐点');
     expect(strings.currentBranchMarker).toBe('HEAD');
+    expect(strings.onlyRightCommits).toBe('右側のみのコミット');
     expect(strings.commitMeta('山田', '2025/01/01')).toBe('山田 · 2025/01/01');
   });
 

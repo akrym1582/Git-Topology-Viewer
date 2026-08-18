@@ -381,6 +381,8 @@ try {
   );
   await page.getByRole('heading', { name: '比較', exact: true }).waitFor();
   await page.getByText('src/AuthService.ts').waitFor();
+  await page.getByRole('heading', { name: '右側のみのコミット', exact: true }).waitFor();
+  await page.getByText('Update shared configuration', { exact: true }).waitFor();
   await page.screenshot({
     path: join(imageDir, 'smoke-branch-comparison-context-menu.png'),
     fullPage: true,

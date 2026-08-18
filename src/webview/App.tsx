@@ -1204,6 +1204,8 @@ function Comparison({ ui, value }: { ui: WebviewStrings; value: BranchComparison
       <p className="stat">
         <ins>+{value.additions}</ins> <del>−{value.deletions}</del>
       </p>
+      <ComparisonCommitList ui={ui} title={ui.onlyLeftCommits} commits={value.onlyLeft} />
+      <ComparisonCommitList ui={ui} title={ui.onlyRightCommits} commits={value.onlyRight} />
       <h3>{ui.changedFiles}</h3>
       <div className="files">
         {value.files.map((file) => (
@@ -1226,6 +1228,30 @@ function Comparison({ ui, value }: { ui: WebviewStrings; value: BranchComparison
         ))}
       </div>
     </div>
+  );
+}
+function ComparisonCommitList({
+  ui,
+  title,
+  commits,
+}: {
+  ui: WebviewStrings;
+  title: string;
+  commits: CommitInfo[];
+}) {
+  if (!commits.length) return null;
+  return (
+    <section className="comparison-commits">
+      <h3>{title}</h3>
+      <div>
+        {commits.map((commit) => (
+          <div className="comparison-commit" key={commit.id}>
+            <code>{commit.id.slice(0, 8)}</code>
+            <span>{commit.subject || ui.none}</span>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 function branchState(data: GraphPayload, ref: GitRef, ui: WebviewStrings): string {

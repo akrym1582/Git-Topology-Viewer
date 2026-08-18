@@ -55,6 +55,8 @@ export interface WebviewStrings {
   none: string;
   onlyLeft: string;
   onlyRight: string;
+  onlyLeftCommits: string;
+  onlyRightCommits: string;
   changedFiles: string;
   compareSelectedRefs: string;
   contextGroup(group: 'compare' | 'graph' | 'git' | 'manage' | 'copy'): string;
@@ -120,6 +122,8 @@ const english: WebviewStrings = {
   none: 'None',
   onlyLeft: 'only left',
   onlyRight: 'only right',
+  onlyLeftCommits: 'Commits only on left',
+  onlyRightCommits: 'Commits only on right',
   changedFiles: 'Changed files',
   compareSelectedRefs: 'Compare selected refs',
   contextGroup: (group) =>
@@ -187,6 +191,8 @@ const japanese: WebviewStrings = {
   none: 'なし',
   onlyLeft: '左側のみ',
   onlyRight: '右側のみ',
+  onlyLeftCommits: '左側のみのコミット',
+  onlyRightCommits: '右側のみのコミット',
   changedFiles: '変更されたファイル',
   compareSelectedRefs: '選択した参照を比較',
   contextGroup: (group) =>

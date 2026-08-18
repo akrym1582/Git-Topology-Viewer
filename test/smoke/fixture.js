@@ -161,7 +161,11 @@ window.__smokeComparison = {
       { status: 'D', path: 'src/OldLoginService.ts' },
     ],
     onlyLeft: [],
-    onlyRight: [],
+    onlyRight: [
+      { id: 'd91bd1201234567890', subject: 'Update shared configuration' },
+      { id: 'e91bd1201234567890', subject: 'Refresh release metadata' },
+      { id: 'f91bd1201234567890', subject: 'Polish branch comparison' },
+    ],
   },
 };
 window.__smokeMainLog = {
