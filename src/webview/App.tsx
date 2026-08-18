@@ -30,6 +30,7 @@ export function App() {
   const dataRef = React.useRef<GraphPayload>();
   const [data, setData] = useState<GraphPayload>();
   const [comparison, setComparison] = useState<BranchComparison>();
+  const [comparisonLoading, setComparisonLoading] = useState(false);
   const [refLog, setRefLog] = useState<RefLog>();
   const [commitDetails, setCommitDetails] = useState<Record<string, CommitDetails>>({});
   const [expandedCommitDetails, setExpandedCommitDetails] = useState<Set<string>>(new Set());
@@ -57,7 +58,10 @@ export function App() {
         dataRef.current = message.payload;
         setError('');
       }
-      if (message.type === 'comparison') setComparison(message.payload);
+      if (message.type === 'comparison') {
+        setComparison(message.payload);
+        setComparisonLoading(false);
+      }
       if (message.type === 'refLog') {
         setRefLog(message.payload);
         setCommitDetails({});
@@ -73,7 +77,10 @@ export function App() {
         setCommitDetails({});
         setExpandedCommitDetails(new Set());
       }
-      if (message.type === 'error') setError(message.message);
+      if (message.type === 'error') {
+        setError(message.message);
+        setComparisonLoading(false);
+      }
       if (message.type === 'operationResult') setNotice(message.message);
       if (message.type === 'contextMenuItems') {
         const ref = dataRef.current?.refs.find((item) => item.fullName === message.nodeId);
@@ -162,8 +169,14 @@ export function App() {
   };
   const adjustInspectorWidth = (delta: number) =>
     setInspectorWidth((width) => clampInspectorWidth(width + delta));
+  const requestComparison = (left: string, right: string, mode: 'divergence' | 'snapshot') => {
+    setComparison(undefined);
+    setComparisonLoading(true);
+    vscode.postMessage({ type: 'compareRefs', left, right, mode });
+  };
   const selectRef = (ref: GitRef, additive: boolean) => {
     setComparison(undefined);
+    setComparisonLoading(false);
     setRefLog(undefined);
     setCommitDetails({});
     setExpandedCommitDetails(new Set());
@@ -181,13 +194,7 @@ export function App() {
     }
     const next = [...without.slice(-1), ref];
     setSelected(next);
-    if (next.length === 2)
-      vscode.postMessage({
-        type: 'compareRefs',
-        left: next[0].fullName,
-        right: next[1].fullName,
-        mode: 'divergence',
-      });
+    if (next.length === 2) requestComparison(next[0].fullName, next[1].fullName, 'snapshot');
   };
   const closeCommitDetails = (commit: string) => {
     setExpandedCommitDetails((current) => {
@@ -388,6 +395,7 @@ export function App() {
                 selected={selected}
                 refs={visibleRefs}
                 comparison={comparison}
+                comparisonLoading={comparisonLoading}
                 refLog={refLog}
                 commitDetails={commitDetails}
                 expandedCommitDetails={expandedCommitDetails}
@@ -399,6 +407,7 @@ export function App() {
                 }
                 onCloseCommitDetails={closeCommitDetails}
                 onContextMenuCommit={openCommitContextMenu}
+                onCompare={requestComparison}
                 onClose={() => {
                   setSelected([]);
                   setSelectedCommit(undefined);
@@ -804,6 +813,7 @@ function Inspector({
   selected,
   refs,
   comparison,
+  comparisonLoading,
   refLog,
   commitDetails,
   expandedCommitDetails,
@@ -813,12 +823,14 @@ function Inspector({
   onSelectCommit,
   onCloseCommitDetails,
   onContextMenuCommit,
+  onCompare,
   onClose,
 }: {
   ui: WebviewStrings;
   selected: GitRef[];
   refs: GitRef[];
   comparison?: BranchComparison;
+  comparisonLoading: boolean;
   refLog?: RefLog;
   commitDetails: Record<string, CommitDetails>;
   expandedCommitDetails: Set<string>;
@@ -828,6 +840,7 @@ function Inspector({
   onSelectCommit: (commit: string) => void;
   onCloseCommitDetails: (commit: string) => void;
   onContextMenuCommit: (commit: string, event: MouseEvent) => void;
+  onCompare: (left: string, right: string, mode: 'divergence' | 'snapshot') => void;
   onClose: () => void;
 }) {
   const primary = selected[0];
@@ -840,7 +853,7 @@ function Inspector({
     refs.some((ref) => ref.fullName === otherOverride && ref.fullName !== primary?.fullName)
       ? otherOverride
       : (selectedOther ?? fallbackOther);
-  const [mode, setMode] = useState<'divergence' | 'snapshot'>('divergence');
+  const [mode, setMode] = useState<'divergence' | 'snapshot'>('snapshot');
   if (!primary && selectedCommitGroup)
     return (
       <CommitGroupInspector
@@ -875,8 +888,6 @@ function Inspector({
         <p>{ui.selectBranchOrTagHint}</p>
       </div>
     );
-  const compare = () =>
-    vscode.postMessage({ type: 'compareRefs', left: primary.fullName, right: other, mode });
   return (
     <div className="inspector">
       <button
@@ -917,7 +928,14 @@ function Inspector({
         <>
           <hr />
           <h3>{ui.compareWith}</h3>
-          <select value={other} onChange={(event) => setOtherOverride(event.target.value)}>
+          <select
+            value={other}
+            onChange={(event) => {
+              const nextOther = event.target.value;
+              setOtherOverride(nextOther);
+              onCompare(primary.fullName, nextOther, mode);
+            }}
+          >
             {refs
               .filter((ref) => ref.fullName !== primary.fullName)
               .map((ref) => (
@@ -930,7 +948,10 @@ function Inspector({
             <input
               type="radio"
               checked={mode === 'divergence'}
-              onChange={() => setMode('divergence')}
+              onChange={() => {
+                setMode('divergence');
+                if (other) onCompare(primary.fullName, other, 'divergence');
+              }}
             />{' '}
             {ui.changesSinceDivergence}
           </label>
@@ -938,14 +959,20 @@ function Inspector({
             <input
               type="radio"
               checked={mode === 'snapshot'}
-              onChange={() => setMode('snapshot')}
+              onChange={() => {
+                setMode('snapshot');
+                if (other) onCompare(primary.fullName, other, 'snapshot');
+              }}
             />{' '}
             {ui.currentSnapshots}
           </label>
-          <button className="primary" disabled={!other} onClick={compare}>
-            {ui.compareRefs}
-          </button>
-          {comparison &&
+          {comparisonLoading && (
+            <p className="loading-details comparison-loading" role="status">
+              {ui.comparisonLoading}
+            </p>
+          )}
+          {!comparisonLoading &&
+            comparison &&
             comparison.left === primary.fullName &&
             comparison.right === other &&
             comparison.mode === mode && <Comparison ui={ui} value={comparison} />}

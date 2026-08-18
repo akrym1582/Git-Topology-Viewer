@@ -35,7 +35,7 @@ export interface WebviewStrings {
   compareWith: string;
   changesSinceDivergence: string;
   currentSnapshots: string;
-  compareRefs: string;
+  comparisonLoading: string;
   commitHistory: string;
   branchPoint: string;
   noCommitsFound: string;
@@ -102,7 +102,7 @@ const english: WebviewStrings = {
   compareWith: 'Compare with',
   changesSinceDivergence: 'Changes since divergence',
   currentSnapshots: 'Current snapshots',
-  compareRefs: 'Compare refs',
+  comparisonLoading: 'Comparing refs…',
   commitHistory: 'Commit history',
   branchPoint: 'BRANCH POINT',
   noCommitsFound: 'No commits found after the branch point.',
@@ -171,7 +171,7 @@ const japanese: WebviewStrings = {
   compareWith: '比較対象',
   changesSinceDivergence: '分岐後の変更',
   currentSnapshots: '現在のスナップショット',
-  compareRefs: '参照を比較',
+  comparisonLoading: '参照を比較中…',
   commitHistory: 'コミット履歴',
   branchPoint: '分岐点',
   noCommitsFound: '分岐点以降のコミットはありません。',
