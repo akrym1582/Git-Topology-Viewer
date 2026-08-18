@@ -29,26 +29,13 @@ try {
   await mkdir(imageDir, { recursive: true });
   await page.screenshot({ path: join(imageDir, 'smoke-main-screen.png'), fullPage: true });
 
-  if (await page.locator('.node').count() !== 4) throw new Error('Expected four reference groups');
-  if (await page.locator('.edges path').count() !== 3) throw new Error('Expected one branch-relation edge per ref group');
-  if (await page.locator('.ref.remoteBranch').count()) throw new Error('Remote refs must be hidden until enabled');
-  if (await page.locator('.range, .edge-count, .commit-node').count()) throw new Error('Commit ranges, commit counts, and commit nodes must not render in relation view');
-
-  await page.getByRole('tab', { name: 'Git 関係図' }).click();
-  await page.locator('.node').first().waitFor();
-  await page.screenshot({ path: join(imageDir, 'smoke-relation-graph.png'), fullPage: true });
-
-  await page.evaluate(() => window.__dispatchGraph(true, false, true, false));
-  await page.getByRole('tab', { name: '分岐・マージ' }).click();
-  await page.getByText('分岐・マージを読み込めません。ビューアーを更新してからもう一度試してください。').waitFor();
-  if (await page.locator('.app').count() !== 1 || await page.locator('.node').count() !== 4) throw new Error('Missing branch-and-merge data must keep the webview rendered');
-  const missingGraphRequest = await page.evaluate(() => window.__vscodeMessages.at(-1));
-  if (missingGraphRequest?.type !== 'refresh') throw new Error(`Expected a refresh for missing branch-and-merge data: ${JSON.stringify(missingGraphRequest)}`);
-  await page.evaluate(() => window.__dispatchGraph());
-
-  await page.getByRole('tab', { name: '分岐・マージ' }).click();
-  await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5);
+  if (await page.getByRole('tablist').count()) throw new Error('The viewer must expose only the Branches & merges view');
+  if (await page.getByRole('button', { name: 'Git 関係図' }).count() || await page.getByRole('button', { name: 'コミット履歴' }).count()) throw new Error('Deprecated graph tabs must not render');
+  if (await page.locator('.commit-node').count() !== 5) throw new Error('Expected five structural commits');
   if (await page.locator('.commit-group').count() !== 1) throw new Error('Expected the linear commit range to render as one summary group');
+  if (await page.locator('.commit-edges path').count() !== 6) throw new Error('Expected summary graph edges');
+  if (await page.locator('.ref.remoteBranch').count()) throw new Error('Remote refs must be hidden until enabled');
+  await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5);
   await page.screenshot({ path: join(imageDir, 'smoke-significant-commits.png'), fullPage: true });
   const summaryCheckbox = page.getByRole('checkbox', { name: 'コミットを概要表示' });
   const allCommitsCheckbox = page.getByRole('checkbox', { name: 'すべてのコミットを表示' });
@@ -58,16 +45,6 @@ try {
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 7 && document.querySelectorAll('.commit-group').length === 0);
   await allCommitsCheckbox.uncheck(); await summaryCheckbox.check();
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5 && document.querySelectorAll('.commit-group').length === 1);
-  await page.getByRole('tab', { name: 'Git 関係図' }).click();
-
-  await page.evaluate(() => window.__dispatchGraph(true, false, false));
-  await page.getByRole('tab', { name: 'コミット履歴' }).click();
-  await page.getByText('コミット履歴を読み込めません。ビューアーを更新してからもう一度試してください。').waitFor();
-  let request = await page.evaluate(() => window.__vscodeMessages.at(-1));
-  if (request?.type !== 'refresh') throw new Error(`Expected a refresh for a stale graph payload: ${JSON.stringify(request)}`);
-  if (await page.locator('.commit-node').count()) throw new Error('Stale graph payload must not enter a blank commit-history view');
-  await page.evaluate(() => window.__dispatchGraph());
-  await page.getByText('コミット履歴を読み込めません。ビューアーを更新してからもう一度試してください。').waitFor({ state: 'detached' });
 
   await page.getByRole('button', { name: '詳細を隠す' }).click();
   if (await page.locator('aside').count()) throw new Error('Expected the details pane to be hidden');
@@ -75,6 +52,7 @@ try {
   await page.getByRole('button', { name: '詳細を表示' }).click();
   await page.locator('aside').waitFor();
 
+  let request;
   await page.getByText('リモートブランチ').click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'setRefVisibility' || request.tags !== true || request.remotes !== true) throw new Error(`Unexpected ref visibility request: ${JSON.stringify(request)}`);
@@ -85,16 +63,7 @@ try {
   const remoteLabels = await page.locator('.ref.remoteBranch').evaluateAll(elements => elements.map(element => element.getAttribute('transform')));
   if (remoteLabels.length !== 2 || remoteLabels[0] === remoteLabels[1]) throw new Error(`Expected stacked remote refs: ${JSON.stringify(remoteLabels)}`);
 
-  await page.getByRole('tab', { name: 'コミット履歴' }).click();
-  await page.locator('.commit-node').first().waitFor();
-  if (await page.locator('.commit-node').count() !== 7) throw new Error('Expected every fixture commit in commit history mode');
-  if (await page.locator('.commit-edges path').count() !== 7) throw new Error('Expected all direct parent edges in commit history mode');
-  const mergeEdges = await page.locator('.commit-edges path').evaluateAll(paths => paths.filter(path => path.getAttribute('d')?.includes('250')).length);
-  if (mergeEdges < 2) throw new Error('Expected visible divergence and merge lanes in commit history mode');
-  await page.screenshot({ path: join(imageDir, 'smoke-commit-history.png'), fullPage: true });
-  await page.getByRole('tab', { name: 'Git 関係図' }).click();
-  await page.locator('.commit-node').waitFor({ state: 'detached' });
-
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   await page.locator('.ref.localBranch').first().click();
   await page.getByRole('heading', { name: 'main' }).waitFor();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));

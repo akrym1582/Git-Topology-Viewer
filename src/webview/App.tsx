@@ -19,7 +19,6 @@ export function App() {
   const [notice, setNotice] = useState('');
   const [tags, setTags] = useState(true);
   const [remotes, setRemotes] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('relations');
   const [summarizeCommits, setSummarizeCommits] = useState(true);
   const [showAllCommits, setShowAllCommits] = useState(false);
   const [selected, setSelected] = useState<GitRef[]>([]);
@@ -53,9 +52,9 @@ export function App() {
     return () => removeEventListener('click', close);
   }, [menu]);
 
-  const visibleGraph = viewMode === 'relations' ? data?.graph : viewMode === 'significant' ? showAllCommits ? data?.commitGraph : summarizeCommits ? data?.significantGraph : data?.minimalGraph : data?.commitGraph;
-  const renderGraph = visibleGraph ?? data?.graph;
-  const renderMode = visibleGraph ? viewMode : 'relations';
+  const visibleGraph = showAllCommits ? data?.commitGraph : summarizeCommits ? data?.significantGraph : data?.minimalGraph;
+  const renderGraph = visibleGraph ?? data?.significantGraph;
+  const renderMode: ViewMode = 'significant';
   const visibleRefs = useMemo(() => renderGraph?.nodes.flatMap(node => node.refs) ?? [], [renderGraph]);
   const visibleCommitCount = useMemo(() => renderGraph?.nodes.reduce((count, node) => count + ((node as CommitViewGraph['nodes'][number]).commitIds?.length ?? 1), 0) ?? 0, [renderGraph]);
   if (!data) return <main className="loading"><div className="spinner"/><h2>{ui.readingRelations}</h2>{error && <p className="error">{error}</p>}</main>;
@@ -89,20 +88,9 @@ export function App() {
     setTags(nextTags); setRemotes(nextRemotes);
     vscode.postMessage({ type: 'setRefVisibility', tags: nextTags, remotes: nextRemotes });
   };
-  const showCommitHistory = () => {
-    if (data.commitGraph) { setViewMode('commits'); return; }
-    setError(ui.commitGraphUnavailable);
-    vscode.postMessage({ type: 'refresh' });
-  };
-  const showSignificantGraph = () => {
-    if (data.significantGraph) { setViewMode('significant'); return; }
-    setError(ui.significantGraphUnavailable);
-    vscode.postMessage({ type: 'refresh' });
-  };
-
   return <div className="app" onContextMenu={event => event.preventDefault()}>
-    <header><div className="brand"><span className="mark">⌁</span><div><strong>{viewMode === 'relations' ? ui.relationGraph : viewMode === 'significant' ? ui.significantGraph : ui.commitGraph}</strong><small>{data.repository}</small></div></div><div className="modes" role="tablist"><button role="tab" aria-selected={viewMode === 'relations'} className={viewMode === 'relations' ? 'active' : ''} onClick={() => setViewMode('relations')}>{ui.relationGraph}</button><button role="tab" aria-selected={viewMode === 'significant'} className={viewMode === 'significant' ? 'active' : ''} onClick={showSignificantGraph}>{ui.significantGraph}</button><button role="tab" aria-selected={viewMode === 'commits'} className={viewMode === 'commits' ? 'active' : ''} onClick={showCommitHistory}>{ui.commitGraph}</button></div><button className="refresh" onClick={() => vscode.postMessage({ type: 'refresh' })}>↻ {ui.refresh}</button></header>
-    <div className="filters"><label><input type="checkbox" checked={tags} onChange={event => setRefVisibility(event.target.checked, remotes)}/> {ui.tags}</label><label><input type="checkbox" checked={remotes} onChange={event => setRefVisibility(tags, event.target.checked)}/> {ui.remoteBranches}</label>{viewMode === 'significant' && <><label><input type="checkbox" checked={summarizeCommits} onChange={event => setSummarizeCommits(event.target.checked)}/> {ui.summarizeCommits}</label><label><input type="checkbox" checked={showAllCommits} onChange={event => setShowAllCommits(event.target.checked)}/> {ui.showAllCommits}</label></>}<button className="toggle-inspector" aria-pressed={inspectorVisible} onClick={() => setInspectorVisible(value => !value)}>{inspectorVisible ? ui.hideDetails : ui.showDetails}</button><span>{renderMode === 'relations' ? ui.nodesAndRefs(data.graph.nodes.length, visibleRefs.length) : ui.commitsAndRefs(visibleCommitCount, visibleRefs.length)}</span></div>
+    <header><div className="brand"><span className="mark">⌁</span><div><strong>{ui.significantGraph}</strong><small>{data.repository}</small></div></div><button className="refresh" onClick={() => vscode.postMessage({ type: 'refresh' })}>↻ {ui.refresh}</button></header>
+    <div className="filters"><label><input type="checkbox" checked={tags} onChange={event => setRefVisibility(event.target.checked, remotes)}/> {ui.tags}</label><label><input type="checkbox" checked={remotes} onChange={event => setRefVisibility(tags, event.target.checked)}/> {ui.remoteBranches}</label><label><input type="checkbox" checked={summarizeCommits} onChange={event => setSummarizeCommits(event.target.checked)}/> {ui.summarizeCommits}</label><label><input type="checkbox" checked={showAllCommits} onChange={event => setShowAllCommits(event.target.checked)}/> {ui.showAllCommits}</label><button className="toggle-inspector" aria-pressed={inspectorVisible} onClick={() => setInspectorVisible(value => !value)}>{inspectorVisible ? ui.hideDetails : ui.showDetails}</button><span>{ui.commitsAndRefs(visibleCommitCount, visibleRefs.length)}</span></div>
     <div className={`content ${inspectorVisible ? '' : 'inspector-hidden'}`} style={inspectorVisible ? { gridTemplateColumns: `minmax(0, 1fr) 9px ${inspectorWidth}px` } : undefined}><Graph graph={renderGraph} mode={renderMode} data={data} ui={ui} selected={new Set(selected.map(ref => ref.fullName))} onSelect={selectRef} onContextMenu={openContextMenu}/>{inspectorVisible && <><div className="inspector-resizer" role="separator" aria-orientation="vertical" aria-label={ui.resizeDetails} aria-valuemin={MIN_INSPECTOR_WIDTH} aria-valuemax={getMaxInspectorWidth()} aria-valuenow={inspectorWidth} tabIndex={0} title={ui.resizeDetails} onPointerDown={startInspectorResize} onKeyDown={event => { if (event.key === 'ArrowLeft') { event.preventDefault(); adjustInspectorWidth(16); } if (event.key === 'ArrowRight') { event.preventDefault(); adjustInspectorWidth(-16); } if (event.key === 'Home') { event.preventDefault(); setInspectorWidth(MIN_INSPECTOR_WIDTH); } if (event.key === 'End') { event.preventDefault(); setInspectorWidth(getMaxInspectorWidth()); } }}/><aside><Inspector ui={ui} selected={selected} refs={visibleRefs} comparison={comparison} refLog={refLog} commitDetails={commitDetails} onClose={() => setSelected([])}/></aside></>}</div>
     {menu && <ContextMenu ui={ui} menu={menu} onRun={command => { vscode.postMessage({ type: 'runContextCommand', command, nodeId: menu.ref.fullName, selectedRefs: menu.selectedRefs }); setMenu(undefined); }}/>}
     {error && <div className="toast">{error}</div>}

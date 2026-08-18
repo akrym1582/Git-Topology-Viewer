@@ -15,7 +15,7 @@ describe('webview localization', () => {
     expect(strings.commitGroupAriaLabel(4)).toBe('4 件の連続したコミットの概要');
     expect(strings.summarizeCommits).toBe('コミットを概要表示');
     expect(strings.showAllCommits).toBe('すべてのコミットを表示');
-    expect(strings.readingRelations).toBe('ブランチの関係を読み込み中…');
+    expect(strings.readingRelations).toBe('分岐・マージを読み込み中…');
     expect(strings.branchPoint).toBe('分岐点');
   });
 
