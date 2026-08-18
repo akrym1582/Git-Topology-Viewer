@@ -13,6 +13,16 @@ The extension is configured for the Visual Studio Marketplace publisher
 The publisher ID in `package.json` must match the Marketplace publisher exactly.
 The GitHub repository owner may be different from the Marketplace publisher ID.
 
+The PNG icon is generated from `resources/topology.svg`. If the SVG changes,
+regenerate the Marketplace icon with:
+
+```powershell
+npm run icon:generate
+```
+
+This command uses the pinned Playwright browser dependency. If Chromium is not
+installed in the environment yet, run `npm run smoke:install` once first.
+
 ## Validate and package locally
 
 ```powershell

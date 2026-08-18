@@ -4,6 +4,7 @@
 artifacts/**
 test/**
 src/**
+scripts/**
 AGENTS.md
 .gitignore
 esbuild.mjs
