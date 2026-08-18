@@ -31,6 +31,8 @@ try {
 
   if (await page.locator('header, .brand').count()) throw new Error('The redundant graph header must not render');
   await page.locator('.filters').getByRole('button', { name: /更新/ }).waitFor();
+  const controlHeights = await page.locator('.filters .toggle-inspector, .filters .refresh').evaluateAll(elements => elements.map(element => Math.round(element.getBoundingClientRect().height)));
+  if (new Set(controlHeights).size !== 1) throw new Error(`Expected aligned filter controls, got heights: ${JSON.stringify(controlHeights)}`);
   if (await page.getByRole('tablist').count()) throw new Error('The viewer must expose only the Branches & merges view');
   if (await page.getByRole('button', { name: 'Git 関係図' }).count() || await page.getByRole('button', { name: 'コミット履歴' }).count()) throw new Error('Deprecated graph tabs must not render');
   if (await page.locator('.commit-node').count() !== 5) throw new Error('Expected five structural commits');
@@ -49,12 +51,16 @@ try {
   if (await page.locator('.commit-edges path').count()) throw new Error('Ref-only mode must not render commit edges');
   await branchCommitsCheckbox.check();
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5 && document.querySelectorAll('.commit-group').length === 1);
+  if (await page.locator('.commit-edges path').count() !== 6) throw new Error('Expected summary graph edges after restoring branch commits');
   await summaryCheckbox.uncheck();
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5 && document.querySelectorAll('.commit-group').length === 0);
+  if (await page.locator('.commit-edges path').count() !== 5) throw new Error('Expected minimal graph edges after disabling summaries');
   await allCommitsCheckbox.check();
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 10 && document.querySelectorAll('.commit-group').length === 0);
+  if (await page.locator('.commit-edges path').count() !== 10) throw new Error('Expected full commit graph edges after showing all commits');
   await allCommitsCheckbox.uncheck(); await summaryCheckbox.check();
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5 && document.querySelectorAll('.commit-group').length === 1);
+  if (await page.locator('.commit-edges path').count() !== 6) throw new Error('Expected summary graph edges after restoring summaries');
 
   let request;
   await page.locator('.commit-group .group-badge').click();

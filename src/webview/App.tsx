@@ -149,13 +149,14 @@ function Graph({ graph, mode, data, ui, selected, selectedCommit, selectedCommit
   const nodes = new Map(graph.nodes.map(node => [node.id, node]));
   const maxX = Math.max(800, ...graph.nodes.map(node => node.x + 300));
   const maxY = Math.max(600, ...graph.nodes.map(node => node.y + 100));
+  const graphKey = `${mode}:${graph.nodes.map(node => `${node.id}:${node.refs.map(ref => ref.fullName).join(',')}`).join('|')}:${graph.edges.map(edge => `${edge.from}:${edge.to}`).join('|')}`;
   const updateZoom = (next: number) => setZoom(Math.min(2, Math.max(0.5, Math.round(next * 10) / 10)));
   return <section className="canvas" onWheel={event => { if (event.ctrlKey || event.metaKey) { event.preventDefault(); updateZoom(zoom + (event.deltaY < 0 ? 0.1 : -0.1)); } }}>
     <div className="zoom-controls" aria-label={ui.zoomControls}><button aria-label={ui.zoomOut} title={ui.zoomOut} disabled={zoom <= 0.5} onClick={() => updateZoom(zoom - 0.1)}>−</button><button aria-label={ui.resetZoom} title={ui.resetZoom} onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button><button aria-label={ui.zoomIn} title={ui.zoomIn} disabled={zoom >= 2} onClick={() => updateZoom(zoom + 0.1)}>＋</button></div>
-    <svg width={maxX * zoom} height={maxY * zoom}>
+    <svg key={graphKey} width={maxX * zoom} height={maxY * zoom}>
       <g transform={`scale(${zoom})`}>
         <g className={`edges ${mode !== 'relations' ? 'commit-edges' : ''}`}>
-          {graph.edges.map(edge => {
+          {graph.edges.map((edge, edgeIndex) => {
             const from = nodes.get(edge.from);
             const to = nodes.get(edge.to);
             if (!from || !to) return null;
@@ -164,10 +165,10 @@ function Graph({ graph, mode, data, ui, selected, selectedCommit, selectedCommit
               const toLayout = refLayouts.get(to.id)!;
               const fromPoint = { x: from.x + REF_WIDTH / 2 - REF_ICON_CENTER_X, y: from.y + fromLayout.top + REF_HEIGHT };
               const toPoint = { x: to.x + REF_WIDTH / 2 - REF_ICON_CENTER_X, y: to.y + toLayout.top };
-              return <path key={`${edge.from}:${edge.to}`} d={relationEdgePath(fromPoint, toPoint)}/>;
+              return <path key={`${edge.from}:${edge.to}:${edgeIndex}`} d={relationEdgePath(fromPoint, toPoint)}/>;
             }
             const fromX = from.x; const fromY = from.y; const toX = to.x; const toY = to.y;
-            return <path key={`${edge.from}:${edge.to}`} d={`M ${fromX} ${fromY} C ${fromX} ${(fromY + toY) / 2}, ${toX} ${(fromY + toY) / 2}, ${toX} ${toY}`}/>;
+            return <path key={`${edge.from}:${edge.to}:${edgeIndex}`} d={`M ${fromX} ${fromY} C ${fromX} ${(fromY + toY) / 2}, ${toX} ${(fromY + toY) / 2}, ${toX} ${toY}`}/>;
           })}
         </g>
         {graph.nodes.map(node => {

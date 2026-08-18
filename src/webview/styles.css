@@ -14,6 +14,7 @@ button:not(:disabled), select, input[type=checkbox]:not(:disabled), input[type=r
 .filters .search { margin-left: 12px; background: #0c0f15; border: 1px solid #343c49; border-radius: 5px; padding: 7px 10px; width: 220px; }
 .filters span { margin-left: auto; color: var(--muted); }
 .filters .toggle-inspector { border: 1px solid #384152; border-radius: 5px; background: #171c25; padding: 6px 10px; }
+.filters .toggle-inspector, .filters .refresh { height: 34px; display: inline-flex; align-items: center; }
 .filters .toggle-inspector:hover { background: #2c3543; }
 .content { display: grid; grid-template-columns: minmax(0, 1fr) 9px 340px; flex: 1; min-height: 0; }
 .content.inspector-hidden { grid-template-columns: minmax(0, 1fr); }
