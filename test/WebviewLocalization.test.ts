@@ -18,6 +18,8 @@ describe('webview localization', () => {
     expect(strings.showAllCommits).toBe('すべてのコミットを表示');
     expect(strings.readingRelations).toBe('分岐・マージを読み込み中…');
     expect(strings.branchPoint).toBe('分岐点');
+    expect(strings.currentBranchMarker).toBe('HEAD');
+    expect(strings.commitMeta('山田', '2025/01/01')).toBe('山田 · 2025/01/01');
   });
 
   it('falls back to English for unsupported display languages', () => {

@@ -2,6 +2,8 @@ import { GitClient, GitError } from './GitClient';
 import { GitCommandResult } from './BranchOperationService';
 export class CommitOperationService {
   constructor(private git: GitClient) {}
+  checkoutDetached(hash: string) { return this.execute(['switch', '--detach', '--', hash]); }
+  createTag(name: string, hash: string) { return this.execute(['tag', name, hash]); }
   cherryPick(hash: string) { return this.execute(['cherry-pick', hash]); }
   revert(hash: string) { return this.execute(['revert', hash]); }
   continueCherryPick() { return this.execute(['cherry-pick', '--continue']); }

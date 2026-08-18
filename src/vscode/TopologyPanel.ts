@@ -4,6 +4,7 @@ import { GitClient } from '../git/GitClient';
 import { RefLoader } from '../git/RefLoader';
 import { CommitLoader } from '../git/CommitLoader';
 import { DiffService } from '../git/DiffService';
+import { CommitOperationService } from '../git/CommitOperationService';
 import { BranchOperationService } from '../git/BranchOperationService';
 import { BranchStatusService } from '../git/BranchStatusService';
 import { BranchRelationBuilder } from '../domain/BranchRelationBuilder';
@@ -11,7 +12,7 @@ import { CommitGraphBuilder } from '../domain/CommitGraphBuilder';
 import { SignificantCommitGraphBuilder } from '../domain/SignificantCommitGraphBuilder';
 import { BranchStatus, CommitGraph, GitRef, RefVisibility } from '../domain/models';
 import { GitContentProvider } from './GitContentProvider';
-import { GraphContextMenuItem, GraphMenuCommand, isWebviewRequest, WebviewRequest } from './messages';
+import { GraphContextMenuItem, GraphMenuCommand, GraphNodeType, isWebviewRequest, WebviewRequest } from './messages';
 import { ContextMenuPolicy } from './ContextMenuPolicy';
 
 export class TopologyPanel {
@@ -22,11 +23,11 @@ export class TopologyPanel {
   private commitView?: import('../domain/models').CommitViewGraph;
   private refVisibility: RefVisibility = { tags: true, remotes: false };
   private readonly diff: DiffService; private readonly disposables: vscode.Disposable[] = [];
-  private readonly operations: BranchOperationService;
+  private readonly operations: BranchOperationService; private readonly commitOperations: CommitOperationService;
   private readonly menuPolicy = new ContextMenuPolicy();
   private constructor(private panel: vscode.WebviewPanel, private git: GitClient, private root: string, private workspaceState: vscode.Memento, extensionUri: vscode.Uri) {
     this.compareBase = workspaceState.get<string>('gitTopology.compareBase');
-    this.diff = new DiffService(git); this.operations = new BranchOperationService(git); panel.webview.html = this.html(panel.webview, extensionUri);
+    this.diff = new DiffService(git); this.operations = new BranchOperationService(git); this.commitOperations = new CommitOperationService(git); panel.webview.html = this.html(panel.webview, extensionUri);
     panel.webview.onDidReceiveMessage((message: unknown) => this.receiveMessage(message), undefined, this.disposables);
     panel.onDidDispose(() => { this.disposables.forEach(d => d.dispose()); TopologyPanel.current = undefined; });
     this.load();
@@ -64,8 +65,8 @@ export class TopologyPanel {
     try {
       if (message.type === 'refresh') await this.load();
       if (message.type === 'setRefVisibility') { this.refVisibility = { tags: message.tags, remotes: message.remotes }; this.sendGraph(); }
-      if (message.type === 'contextMenu') this.sendContextMenu(message.nodeId, message.selectedRefs, message.x, message.y);
-      if (message.type === 'runContextCommand') await this.runContextCommand(message.command, message.nodeId, message.selectedRefs);
+      if (message.type === 'contextMenu') this.sendContextMenu(message.nodeType, message.nodeId, message.selectedRefs, message.x, message.y);
+      if (message.type === 'runContextCommand') await this.runContextCommand(message.command, message.nodeType, message.nodeId, message.selectedRefs);
       if (message.type === 'compareRefs') {
         this.assertKnownRef(message.left);
         this.assertKnownRef(message.right);
@@ -89,12 +90,22 @@ export class TopologyPanel {
     } catch (e) { this.post({ type: 'error', message: e instanceof Error ? e.message : String(e) }); }
   }
 
-  private sendContextMenu(nodeId: string, selectedRefs: string[], x: number, y: number): void {
+  private sendContextMenu(nodeType: GraphNodeType, nodeId: string, selectedRefs: string[], x: number, y: number): void {
+    if (nodeType === 'commit') {
+      this.assertKnownCommit(nodeId);
+      this.post({ type: 'contextMenuItems', nodeType, nodeId, selectedRefs: [], x, y, items: this.menuPolicy.commitItems({
+        hasCurrentBranch: Boolean(this.currentBranch),
+        hasCompareBase: Boolean(this.compareBase),
+        hasCompareTarget: this.refs.length > 0,
+        hasMergeBaseTarget: Boolean(this.currentBranch || this.compareBase)
+      }, message => this.t(message)) });
+      return;
+    }
     const ref = this.knownRef(nodeId);
     const selection = selectedRefs.map(candidate => this.knownRef(candidate));
     if (!selection.some(candidate => candidate.fullName === ref.fullName)) throw new Error(this.t('The context-menu selection is stale. Refresh the viewer and try again.'));
     if (selection.length === 2) {
-      this.post({ type: 'contextMenuItems', nodeId, selectedRefs: selection.map(candidate => candidate.fullName), x, y, items: this.menuPolicy.comparisonItems(message => this.t(message)) });
+      this.post({ type: 'contextMenuItems', nodeType, nodeId, selectedRefs: selection.map(candidate => candidate.fullName), x, y, items: this.menuPolicy.comparisonItems(message => this.t(message)) });
       return;
     }
     const local = ref.type === 'localBranch';
@@ -115,9 +126,13 @@ export class TopologyPanel {
     ];
     const status = this.branchStatuses.find(candidate => candidate.ref === ref.fullName);
     items.push(...this.menuPolicy.branchItems({ ref, currentBranch: this.currentBranch, hasUpstream: Boolean(status?.upstream), operation: { type: 'normal', hasConflicts: false } }, message => this.t(message)));
-    this.post({ type: 'contextMenuItems', nodeId, selectedRefs: [ref.fullName], x, y, items });
+    this.post({ type: 'contextMenuItems', nodeType, nodeId, selectedRefs: [ref.fullName], x, y, items });
   }
-  private async runContextCommand(command: GraphMenuCommand, nodeId: string, selectedRefs?: string[]): Promise<void> {
+  private async runContextCommand(command: GraphMenuCommand, nodeType: GraphNodeType, nodeId: string, selectedRefs?: string[]): Promise<void> {
+    if (nodeType === 'commit') {
+      await this.runCommitContextCommand(command, nodeId);
+      return;
+    }
     const ref = this.knownRef(nodeId);
     if (command === 'compareSelected' || command === 'compareSelectedSnapshots' || command === 'showSelectedMergeBase') {
       if (!selectedRefs || selectedRefs.length !== 2) throw new Error(this.t('Select exactly two refs before using a comparison menu action.'));
@@ -152,6 +167,50 @@ export class TopologyPanel {
     if (command === 'copyName') await vscode.env.clipboard.writeText(ref.name);
     if (command === 'copyHash') await vscode.env.clipboard.writeText(ref.commitId);
   }
+  private async runCommitContextCommand(command: GraphMenuCommand, commit: string): Promise<void> {
+    this.assertKnownCommit(commit);
+    const current = this.currentBranch ? `refs/heads/${this.currentBranch}` : undefined;
+    const comparisonBase = this.compareBase && this.compareBase !== commit ? this.compareBase : undefined;
+    if (command === 'showChanges') {
+      this.post({ type: 'commitDetails', payload: await this.diff.commitDetails(commit) });
+      return;
+    }
+    if (command === 'compareCurrent') { await this.compare(commit, current); return; }
+    if (command === 'compareBase' || command === 'showMergeBase') {
+      const result = await this.compare(commit, comparisonBase);
+      if (command === 'showMergeBase') this.mergeBaseIds = result.mergeBases;
+      this.sendGraph();
+      return;
+    }
+    if (command === 'compareWith') {
+      const picked = await vscode.window.showQuickPick(this.refs.map(ref => ({ label: ref.name, description: ref.type, ref: ref.fullName })), { title: this.t('Compare commit with…') });
+      if (picked) await this.compare(commit, picked.ref);
+      return;
+    }
+    if (command === 'checkoutDetached') {
+      await this.runResult(await this.commitOperations.checkoutDetached(commit), this.t('Checked out {0} in detached HEAD state.', commit.slice(0, 8)));
+      return;
+    }
+    if (command === 'createBranch') {
+      await this.createBranchFromPoint(commit, this.t('Create branch from {0}', commit.slice(0, 8)));
+      return;
+    }
+    if (command === 'createTag') {
+      const name = await vscode.window.showInputBox({ title: this.t('Create tag from {0}', commit.slice(0, 8)), prompt: this.t('New tag name'), validateInput: value => value.trim() ? undefined : this.t('Enter a tag name.') });
+      if (name) await this.runResult(await this.commitOperations.createTag(name.trim(), commit), this.t('Created tag {0}.', name.trim()));
+      return;
+    }
+    if (command === 'cherryPick' || command === 'revert') {
+      const action = command === 'cherryPick' ? this.t('Cherry Pick') : this.t('Revert');
+      const choice = await vscode.window.showWarningMessage(this.t('{0} commit {1}?', action, commit.slice(0, 8)), { modal: true }, action);
+      if (choice !== action) return;
+      const result = command === 'cherryPick' ? await this.commitOperations.cherryPick(commit) : await this.commitOperations.revert(commit);
+      await this.runResult(result, this.t('{0} completed for {1}.', action, commit.slice(0, 8)));
+      return;
+    }
+    if (command === 'copyHash') { await vscode.env.clipboard.writeText(commit); return; }
+    if (command === 'copyMessage') { await vscode.env.clipboard.writeText(await this.diff.commitMessage(commit)); }
+  }
   private async compare(left: string, right?: string, mode: 'divergence' | 'snapshot' = 'divergence') {
     if (!right) throw new Error(this.t('Select a compare base or check out a local branch first.'));
     const result = await this.diff.compare(left, right, mode);
@@ -161,9 +220,12 @@ export class TopologyPanel {
     return result;
   }
   private async createBranch(ref: GitRef): Promise<void> {
-    const name = await vscode.window.showInputBox({ title: this.t('Create branch from {0}', ref.name), prompt: this.t('New branch name'), validateInput: value => value.trim() ? undefined : this.t('Enter a branch name.') });
+    await this.createBranchFromPoint(ref.fullName, this.t('Create branch from {0}', ref.name));
+  }
+  private async createBranchFromPoint(startPoint: string, title: string): Promise<void> {
+    const name = await vscode.window.showInputBox({ title, prompt: this.t('New branch name'), validateInput: value => value.trim() ? undefined : this.t('Enter a branch name.') });
     if (!name) return;
-    await this.runResult(await this.operations.createBranch(name.trim(), ref.fullName), this.t('Created and checked out {0}.', name.trim()));
+    await this.runResult(await this.operations.createBranch(name.trim(), startPoint), this.t('Created and checked out {0}.', name.trim()));
   }
   private knownRef(fullName: string): GitRef {
     const ref = this.refs.find(candidate => candidate.fullName === fullName);
@@ -238,6 +300,11 @@ export class TopologyPanel {
   private assertKnownRef(ref: string): void {
     if (!this.refs.some(candidate => candidate.fullName === ref)) {
       throw new Error(this.t('The selected ref no longer exists. Refresh the viewer and try again.'));
+    }
+  }
+  private assertKnownCommit(commit: string): void {
+    if (!/^[0-9a-f]{7,64}$/i.test(commit)) {
+      throw new Error(this.t('The selected commit is invalid. Refresh the viewer and try again.'));
     }
   }
   private t(message: string, ...args: Array<string | number | boolean>): string { return vscode.l10n.t(message, ...args); }

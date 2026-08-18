@@ -1,18 +1,21 @@
 import { GitClient } from './GitClient';
 import { BranchComparison, ChangedFile, CommitDetails, CommitInfo } from '../domain/models';
+
+const COMMIT_FORMAT = '%H%x00%s%x00%cn%x00%cI';
+
 export class DiffService {
   constructor(private git: GitClient) {}
   private async commits(range: string): Promise<CommitInfo[]> {
-    const out = await this.git.run(['log', '--format=%H%x00%s', range]);
+    const out = await this.git.run(['log', `--format=${COMMIT_FORMAT}`, range]);
     return this.parseCommits(out);
   }
   async log(ref: string, limit = 100): Promise<CommitInfo[]> {
-    const out = await this.git.run(['log', `--max-count=${limit}`, '--format=%H%x00%s', ref, '--']);
+    const out = await this.git.run(['log', `--max-count=${limit}`, `--format=${COMMIT_FORMAT}`, ref, '--']);
     return this.parseCommits(out);
   }
   async commitSummaries(commits: string[]): Promise<CommitInfo[]> {
     if (!commits.length) return [];
-    const out = await this.git.run(['show', '-s', '--format=%H%x00%s', ...commits]);
+    const out = await this.git.run(['show', '-s', `--format=${COMMIT_FORMAT}`, ...commits]);
     const summaries = new Map(this.parseCommits(out).map(commit => [commit.id, commit]));
     return commits.map(commit => summaries.get(commit)).filter((value): value is CommitInfo => Boolean(value));
   }
@@ -22,15 +25,20 @@ export class DiffService {
     const branchPoint = bases[0];
     if (!branchPoint) return { ref, commits: await this.log(ref, limit) };
     const [point, history] = await Promise.all([
-      this.git.run(['show', '-s', '--format=%H%x00%s', branchPoint]),
-      this.git.run(['log', '--first-parent', `--max-count=${limit}`, '--format=%H%x00%s', `${branchPoint}..${ref}`, '--'])
+      this.git.run(['show', '-s', `--format=${COMMIT_FORMAT}`, branchPoint]),
+      this.git.run(['log', '--first-parent', `--max-count=${limit}`, `--format=${COMMIT_FORMAT}`, `${branchPoint}..${ref}`, '--'])
     ]);
     return { ref, branchPoint: this.parseCommits(point)[0], commits: this.parseCommits(history) };
   }
   private parseCommits(out: string): CommitInfo[] {
     return out.split('\n').filter(Boolean).map(line => {
-      const [id, subject = ''] = line.split('\0');
-      return { id, subject };
+      const [id, subject = '', committer = '', date = ''] = line.split('\0');
+      return {
+        id,
+        subject,
+        ...(committer ? { committer } : {}),
+        ...(date ? { date } : {})
+      };
     });
   }
   private parseFiles(out: string): ChangedFile[] {
@@ -55,7 +63,7 @@ export class DiffService {
   }
   async commitDetails(commit: string): Promise<CommitDetails> {
     const [metadata, parents, names, numstat] = await Promise.all([
-      this.git.run(['show', '-s', '--format=%H%x00%s', commit]),
+      this.git.run(['show', '-s', `--format=${COMMIT_FORMAT}`, commit]),
       this.git.run(['rev-list', '--parents', '-n', '1', commit]),
       this.git.run(['diff-tree', '--root', '--first-parent', '--no-commit-id', '-r', '--name-status', '-z', commit, '--']),
       this.git.run(['diff-tree', '--root', '--first-parent', '--no-commit-id', '-r', '--numstat', '-z', commit, '--'])
@@ -72,6 +80,9 @@ export class DiffService {
       deletions: stats.reduce((total, stat) => total + stat.deletions, 0),
       files
     };
+  }
+  async commitMessage(commit: string): Promise<string> {
+    return (await this.git.run(['show', '-s', '--format=%B', commit])).trimEnd();
   }
   async compare(left: string, right: string, mode: 'divergence' | 'snapshot'): Promise<BranchComparison> {
     const [bases, onlyLeft, onlyRight] = await Promise.all([

@@ -74,4 +74,19 @@
   "Delete remote branch?\n\n{0}\n\nThis affects other users.": "リモートブランチを削除しますか？\n\n{0}\n\nこの操作は他のユーザーに影響します。",
   "Git operation failed.": "Git 操作に失敗しました。",
   "Switch and merge operations are available only for local branches.": "切り替えとマージはローカルブランチでのみ実行できます。"
+  ,"Open Changes": "変更を表示",
+  "Checkout (Detached)": "チェックアウト（Detached）",
+  "Create Tag…": "タグを作成…",
+  "Cherry Pick": "チェリーピック",
+  "Revert": "リバート",
+  "Copy Commit Message": "コミットメッセージをコピー",
+  "Compare commit with…": "コミットを比較…",
+  "Checked out {0} in detached HEAD state.": "{0} を Detached HEAD 状態でチェックアウトしました。",
+  "Create tag from {0}": "{0} からタグを作成",
+  "New tag name": "新しいタグ名",
+  "Enter a tag name.": "タグ名を入力してください。",
+  "Created tag {0}.": "タグ {0} を作成しました。",
+  "{0} commit {1}?": "コミット {1} を {0} しますか？",
+  "{0} completed for {1}.": "{1} に対する {0} が完了しました。",
+  "The selected commit is invalid. Refresh the viewer and try again.": "選択したコミットが無効です。ビューアーを更新してもう一度試してください。"
 }

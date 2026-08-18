@@ -34,6 +34,8 @@ try {
   if (await page.locator('.commit-node').count() !== 5) throw new Error('Expected five structural commits');
   if (await page.locator('.commit-group').count() !== 1) throw new Error('Expected the linear commit range to render as one summary group');
   if (await page.locator('.commit-edges path').count() !== 6) throw new Error('Expected summary graph edges');
+  if (await page.locator('.ref.localBranch.current').count() !== 1) throw new Error('Expected exactly one current branch ref');
+  if (!(await page.locator('.ref.localBranch.current').textContent()).includes('[HEAD]')) throw new Error('Expected the current branch HEAD marker');
   if (await page.locator('.ref.remoteBranch').count()) throw new Error('Remote refs must be hidden until enabled');
   await page.waitForFunction(() => document.querySelectorAll('.commit-node').length === 5);
   await page.screenshot({ path: join(imageDir, 'smoke-significant-commits.png'), fullPage: true });
@@ -57,6 +59,7 @@ try {
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'showCommitGroupDetails' || request.commits.length !== 5) throw new Error(`Unexpected summarized commit list request: ${JSON.stringify(request)}`);
   if (await page.locator('.ref-log .log-entry').count() !== 5) throw new Error('Expected every summarized commit to be listed in the commit history component');
+  if (await page.locator('.commit-meta').count() !== 5) throw new Error('Expected committer and date metadata for every summarized commit');
   for (const subject of ['Add login validation', 'Add login form', 'Connect login form', 'Polish login errors', 'Add login tests']) await page.getByText(subject, { exact: true }).waitFor();
   await page.getByRole('button', { name: 'b16a9821234567890 の変更を表示' }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
@@ -68,12 +71,27 @@ try {
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'openDiff' || request.left !== 'b16a9821234567890' || request.right !== 'c16a9821234567890' || request.path !== 'src/LoginForm.tsx') throw new Error(`Unexpected commit diff request: ${JSON.stringify(request)}`);
 
+  await page.getByRole('button', { name: 'b16a9821234567890 の変更を表示' }).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: '変更を表示' }).waitFor();
+  request = await page.evaluate(() => window.__vscodeMessages.filter(message => message?.type === 'contextMenu').at(-1));
+  if (request?.nodeType !== 'commit' || request.nodeId !== 'b16a9821234567890') throw new Error(`Unexpected history commit context menu request: ${JSON.stringify(request)}`);
+  await page.getByRole('menuitem', { name: '変更を表示' }).click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'showCommitDetails' || request.commit !== 'b16a9821234567890') throw new Error(`Unexpected history commit action: ${JSON.stringify(request)}`);
+
   await page.locator('.commit-node').first().locator('circle').click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'showCommitDetails' || request.commit !== 'f41acde1234567890') throw new Error(`Unexpected individual commit details request: ${JSON.stringify(request)}`);
   await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeCommitDetails })));
   await page.getByText('src/AuthService.ts').waitFor();
   await page.getByText('Polish relationship view', { exact: true }).waitFor();
+  await page.locator('.commit-node').first().locator('circle').click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'コミットメッセージをコピー' }).waitFor();
+  request = await page.evaluate(() => window.__vscodeMessages.filter(message => message?.type === 'contextMenu').at(-1));
+  if (request?.nodeType !== 'commit' || request.nodeId !== 'f41acde1234567890') throw new Error(`Unexpected graph commit context menu request: ${JSON.stringify(request)}`);
+  await page.getByRole('menuitem', { name: 'コミットメッセージをコピー' }).click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'runContextCommand' || request.nodeType !== 'commit' || request.command !== 'copyMessage') throw new Error(`Unexpected graph commit action: ${JSON.stringify(request)}`);
 
   await page.getByRole('button', { name: '詳細を隠す' }).click();
   if (await page.locator('aside').count()) throw new Error('Expected the details pane to be hidden');

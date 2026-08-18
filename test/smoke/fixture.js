@@ -46,13 +46,13 @@ let handledVisibilityRequests = 0;
 setInterval(() => { const requests = window.__vscodeMessages.filter(message => message?.type === 'setRefVisibility'); if (requests.length <= handledVisibilityRequests) return; const request = requests[handledVisibilityRequests++]; dispatchGraph(request.tags, request.remotes); }, 20);
 
 window.__smokeComparison = { type: 'comparison', payload: { left: 'refs/heads/main', right: 'refs/heads/develop', mode: 'divergence', mergeBases: [commits.release], ahead: 12, behind: 3, additions: 532, deletions: 128, files: [{ status: 'M', path: 'src/AuthService.ts' }, { status: 'A', path: 'src/LoginService.ts' }, { status: 'D', path: 'src/OldLoginService.ts' }], onlyLeft: [], onlyRight: [] } };
-window.__smokeMainLog = { type: 'refLog', payload: { ref: 'refs/heads/main', commits: [{ id: commits.main, subject: 'Polish relationship view' }, { id: 'e93b2101234567890', subject: 'Merge feature/login' }] } };
-window.__smokeFeatureLog = { type: 'refLog', payload: { ref: 'refs/heads/feature/login', branchPoint: { id: commits.release, subject: 'Release baseline' }, commits: [{ id: commits.feature, subject: 'Improve login flow' }] } };
+window.__smokeMainLog = { type: 'refLog', payload: { ref: 'refs/heads/main', commits: [{ id: commits.main, subject: 'Polish relationship view', committer: 'Release Bot', date: '2025-01-04T03:04:05+09:00' }, { id: 'e93b2101234567890', subject: 'Merge feature/login', committer: 'Merge Bot', date: '2025-01-03T03:04:05+09:00' }] } };
+window.__smokeFeatureLog = { type: 'refLog', payload: { ref: 'refs/heads/feature/login', branchPoint: { id: commits.release, subject: 'Release baseline', committer: 'Release Bot', date: '2025-01-02T03:04:05+09:00' }, commits: [{ id: commits.feature, subject: 'Improve login flow', committer: 'Feature Bot', date: '2025-01-03T03:04:05+09:00' }] } };
 window.__smokeCommitDetails = { type: 'commitDetails', payload: { commit: { id: commits.main, subject: 'Polish relationship view' }, parent: 'e93b2101234567890', additions: 14, deletions: 2, files: [{ status: 'M', path: 'src/AuthService.ts', additions: 10, deletions: 2 }, { status: 'A', path: 'src/LoginService.ts', additions: 4, deletions: 0 }] } };
 window.__smokeGroupCommitSummaries = { type: 'commitGroupDetails', payload: { commits: [
-  { id: 'b16a9821234567890', subject: 'Add login validation' }, { id: 'c16a9821234567890', subject: 'Add login form' },
-  { id: 'd16a9821234567890', subject: 'Connect login form' }, { id: 'e16a9821234567890', subject: 'Polish login errors' },
-  { id: 'f16a9821234567890', subject: 'Add login tests' }
+  { id: 'b16a9821234567890', subject: 'Add login validation', committer: 'Feature Bot', date: '2025-01-04T03:04:05+09:00' }, { id: 'c16a9821234567890', subject: 'Add login form', committer: 'Feature Bot', date: '2025-01-03T03:04:05+09:00' },
+  { id: 'd16a9821234567890', subject: 'Connect login form', committer: 'Feature Bot', date: '2025-01-02T03:04:05+09:00' }, { id: 'e16a9821234567890', subject: 'Polish login errors', committer: 'Feature Bot', date: '2025-01-01T03:04:05+09:00' },
+  { id: 'f16a9821234567890', subject: 'Add login tests', committer: 'Feature Bot', date: '2024-12-31T03:04:05+09:00' }
 ] } };
 window.__smokeGroupCommitDetails = { type: 'commitDetails', payload: { commit: { id: 'b16a9821234567890', subject: 'Add login validation' }, parent: 'c16a9821234567890', additions: 3, deletions: 1, files: [{ status: 'M', path: 'src/LoginForm.tsx', additions: 3, deletions: 1 }] } };
 
@@ -62,12 +62,13 @@ setInterval(() => {
   if (requests.length <= handledMenuRequests) return;
   const request = requests[handledMenuRequests++];
   const isCurrent = request.nodeId === 'refs/heads/main';
+  const isCommit = request.nodeType === 'commit';
   const isPair = request.selectedRefs?.length === 2;
   const item = (command, label, group, enabled = true) => ({ command, label, group, enabled, visible: true });
-  const items = isPair ? [item('compareSelected', '選択した参照を比較', 'compare'), item('compareSelectedSnapshots', '現在のスナップショットを比較', 'compare'), item('showSelectedMergeBase', 'マージベースを表示', 'compare')] : [
+  const items = isCommit ? [item('showChanges', '変更を表示', 'compare'), item('compareCurrent', '現在のブランチと比較', 'compare'), item('compareBase', '選択した比較ベースと比較', 'compare'), item('compareWith', '比較対象を選択…', 'compare'), item('showMergeBase', 'マージベースを表示', 'compare'), item('checkoutDetached', 'チェックアウト（Detached）', 'git'), item('createBranch', 'ここからブランチを作成…', 'git'), item('createTag', 'タグを作成…', 'git'), item('cherryPick', 'チェリーピック', 'git'), item('revert', 'リバート', 'git'), item('copyHash', 'コミットハッシュをコピー', 'copy'), item('copyMessage', 'コミットメッセージをコピー', 'copy')] : isPair ? [item('compareSelected', '選択した参照を比較', 'compare'), item('compareSelectedSnapshots', '現在のスナップショットを比較', 'compare'), item('showSelectedMergeBase', 'マージベースを表示', 'compare')] : [
     item('compareCurrent', '現在のブランチと比較', 'compare', !isCurrent), item('selectCompareBase', '比較ベースとして選択', 'compare'), item('compareWith', '比較対象を選択…', 'compare'), item('showMergeBase', 'マージベースを表示', 'compare', !isCurrent), item('focus', 'このブランチにフォーカス', 'graph'), item('related', '関連するブランチのみ表示', 'graph'), item('checkout', 'チェックアウト', 'git', !isCurrent), item('createBranch', 'ここからブランチを作成…', 'git'), item('copyName', 'ブランチ名をコピー', 'copy')
   ];
-  window.dispatchEvent(new MessageEvent('message', { data: { type: 'contextMenuItems', nodeId: request.nodeId, selectedRefs: request.selectedRefs, x: request.x, y: request.y, items } }));
+  window.dispatchEvent(new MessageEvent('message', { data: { type: 'contextMenuItems', nodeType: request.nodeType, nodeId: request.nodeId, selectedRefs: request.selectedRefs, x: request.x, y: request.y, items } }));
 }, 20);
 
 let handledGroupSummaryRequests = 0;

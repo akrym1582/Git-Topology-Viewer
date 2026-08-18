@@ -1,5 +1,20 @@
 {
   "Open Git Topology Viewer": "Open Git Topology Viewer",
   "Open a folder containing a Git repository first.": "Open a folder containing a Git repository first.",
-  "Open Settings": "Open Settings"
+  "Open Settings": "Open Settings",
+  "Open Changes": "Open Changes",
+  "Checkout (Detached)": "Checkout (Detached)",
+  "Create Tag…": "Create Tag…",
+  "Cherry Pick": "Cherry Pick",
+  "Revert": "Revert",
+  "Copy Commit Message": "Copy Commit Message",
+  "Compare commit with…": "Compare commit with…",
+  "Checked out {0} in detached HEAD state.": "Checked out {0} in detached HEAD state.",
+  "Create tag from {0}": "Create tag from {0}",
+  "New tag name": "New tag name",
+  "Enter a tag name.": "Enter a tag name.",
+  "Created tag {0}.": "Created tag {0}.",
+  "{0} commit {1}?": "{0} commit {1}?",
+  "{0} completed for {1}.": "{0} completed for {1}.",
+  "The selected commit is invalid. Refresh the viewer and try again.": "The selected commit is invalid. Refresh the viewer and try again."
 }
