@@ -3,11 +3,29 @@
   "displayName": "%displayName%",
   "description": "%description%",
   "version": "0.4.0",
-  "publisher": "git-topology",
+  "publisher": "ymknr1582",
+  "icon": "resources/topology.png",
+  "galleryBanner": {
+    "color": "#1f6feb",
+    "theme": "dark"
+  },
+  "keywords": [
+    "Git",
+    "branch",
+    "commit",
+    "graph",
+    "merge",
+    "topology"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/akrym1582/Git-Topology-Viewer.git"
   },
+  "bugs": {
+    "url": "https://github.com/akrym1582/Git-Topology-Viewer/issues"
+  },
+  "homepage": "https://github.com/akrym1582/Git-Topology-Viewer#readme",
+  "license": "MIT",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -52,6 +70,8 @@
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "package": "npm run build && npx --yes @vscode/vsce package --no-dependencies",
+    "package:check": "npm run build && npx --yes @vscode/vsce ls --no-dependencies",
     "screenshots:refresh": "npm run build && node test/smoke/webview-smoke.mjs",
     "smoke:webview": "npm run screenshots:refresh",
     "smoke:install": "playwright install chromium"

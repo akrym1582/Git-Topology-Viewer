@@ -3,6 +3,9 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 interface ExtensionManifest {
+  publisher: string;
+  icon: string;
+  repository: { type: string; url: string };
   activationEvents: string[];
   contributes: {
     viewsContainers?: { activitybar: Array<{ id: string; icon: string }> };
@@ -24,5 +27,20 @@ describe('extension launcher contributions', () => {
 
   it('activates after startup so the status bar launcher can be shown', () => {
     expect(manifest.activationEvents).toContain('onStartupFinished');
+  });
+});
+
+describe('Visual Studio Marketplace metadata', () => {
+  it('uses the configured publisher and a packaged PNG icon', () => {
+    expect(manifest.publisher).toBe('ymknr1582');
+    expect(manifest.icon).toBe('resources/topology.png');
+    expect(manifest.repository).toEqual({
+      type: 'git',
+      url: 'https://github.com/akrym1582/Git-Topology-Viewer.git',
+    });
+    const icon = readFileSync(resolve(process.cwd(), manifest.icon));
+    expect(icon.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    expect(icon.readUInt32BE(16)).toBe(128);
+    expect(icon.readUInt32BE(20)).toBe(128);
   });
 });
