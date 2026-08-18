@@ -36,7 +36,7 @@ header { height: 64px; display: flex; align-items: center; padding: 0 22px; bord
 .commit-node .commit-id { fill: #aeb9cc; font-family: monospace; font-size: 10px; }
 .commit-group { cursor: pointer; outline: none; }
 .commit-group .group-badge { fill: #202c3c; stroke: #8ca1c4; stroke-width: 2; }
-.commit-group:hover .group-badge, .commit-group:focus-visible .group-badge { fill: #235746; stroke: var(--accent); }
+.commit-group:hover .group-badge, .commit-group:focus-visible .group-badge, .commit-group.selected .group-badge { fill: #235746; stroke: var(--accent); }
 .commit-group .group-label { fill: #e9eef8; font-size: 9px; font-weight: 600; }
 .commit-group .group-range { fill: #9aa5ba; font-family: monospace; font-size: 9px; }
 .ref { cursor: pointer; outline: none; }

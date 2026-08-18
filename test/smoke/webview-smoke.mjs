@@ -56,6 +56,7 @@ try {
 
   let request;
   await page.locator('.commit-group .group-badge').click();
+  if (await page.locator('.commit-group.selected').count() !== 1) throw new Error('Selected commit groups must use the selected style');
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'showCommitGroupDetails' || request.commits.length !== 5) throw new Error(`Unexpected summarized commit list request: ${JSON.stringify(request)}`);
   if (await page.locator('.ref-log .log-entry').count() !== 5) throw new Error('Expected every summarized commit to be listed in the commit history component');
