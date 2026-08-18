@@ -10,6 +10,12 @@ export class DiffService {
     const out = await this.git.run(['log', `--max-count=${limit}`, '--format=%H%x00%s', ref, '--']);
     return this.parseCommits(out);
   }
+  async commitSummaries(commits: string[]): Promise<CommitInfo[]> {
+    if (!commits.length) return [];
+    const out = await this.git.run(['show', '-s', '--format=%H%x00%s', ...commits]);
+    const summaries = new Map(this.parseCommits(out).map(commit => [commit.id, commit]));
+    return commits.map(commit => summaries.get(commit)).filter((value): value is CommitInfo => Boolean(value));
+  }
   async branchLog(ref: string, base?: string, limit = 100): Promise<import('../domain/models').RefLog> {
     if (!base) return { ref, commits: await this.log(ref, limit) };
     const bases = (await this.git.run(['merge-base', '--all', ref, base])).trim().split('\n').filter(Boolean);

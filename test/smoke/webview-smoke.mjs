@@ -54,7 +54,10 @@ try {
 
   let request;
   await page.locator('.commit-group .group-badge').click();
+  request = await page.evaluate(() => window.__vscodeMessages.at(-1));
+  if (request?.type !== 'showCommitGroupDetails' || request.commits.length !== 5) throw new Error(`Unexpected summarized commit list request: ${JSON.stringify(request)}`);
   if (await page.locator('.ref-log .log-entry').count() !== 5) throw new Error('Expected every summarized commit to be listed in the commit history component');
+  for (const subject of ['Add login validation', 'Add login form', 'Connect login form', 'Polish login errors', 'Add login tests']) await page.getByText(subject, { exact: true }).waitFor();
   await page.getByRole('button', { name: 'b16a9821234567890 の変更を表示' }).click();
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'showCommitDetails' || request.commit !== 'b16a9821234567890') throw new Error(`Unexpected summarized commit details request: ${JSON.stringify(request)}`);

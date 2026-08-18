@@ -12,6 +12,7 @@ export type WebviewRequest =
   | { type: 'compareRefs'; left: string; right: string; mode: ComparisonMode }
   | { type: 'showRefLog'; ref: string }
   | { type: 'showCommitDetails'; commit: string }
+  | { type: 'showCommitGroupDetails'; commits: string[] }
   | { type: 'switchBranch'; ref: string }
   | { type: 'mergeBranch'; ref: string }
   | { type: 'openDiff'; left: string; right: string; path: string; oldPath?: string; status: ChangedFileStatus }
@@ -27,6 +28,11 @@ function isString(value: unknown): value is string {
 
 function isCommitId(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{7,64}$/i.test(value);
+}
+
+function isCommitIds(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length >= 1 && value.length <= 10000
+    && value.every(isCommitId) && new Set(value).size === value.length;
 }
 
 function isRefSelection(value: unknown): value is string[] {
@@ -54,6 +60,8 @@ export function isWebviewRequest(value: unknown): value is WebviewRequest {
       return isString(value.ref);
     case 'showCommitDetails':
       return isCommitId(value.commit);
+    case 'showCommitGroupDetails':
+      return isCommitIds(value.commits);
     case 'switchBranch':
     case 'mergeBranch':
       return isString(value.ref);

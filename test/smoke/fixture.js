@@ -49,6 +49,11 @@ window.__smokeComparison = { type: 'comparison', payload: { left: 'refs/heads/ma
 window.__smokeMainLog = { type: 'refLog', payload: { ref: 'refs/heads/main', commits: [{ id: commits.main, subject: 'Polish relationship view' }, { id: 'e93b2101234567890', subject: 'Merge feature/login' }] } };
 window.__smokeFeatureLog = { type: 'refLog', payload: { ref: 'refs/heads/feature/login', branchPoint: { id: commits.release, subject: 'Release baseline' }, commits: [{ id: commits.feature, subject: 'Improve login flow' }] } };
 window.__smokeCommitDetails = { type: 'commitDetails', payload: { commit: { id: commits.main, subject: 'Polish relationship view' }, parent: 'e93b2101234567890', additions: 14, deletions: 2, files: [{ status: 'M', path: 'src/AuthService.ts', additions: 10, deletions: 2 }, { status: 'A', path: 'src/LoginService.ts', additions: 4, deletions: 0 }] } };
+window.__smokeGroupCommitSummaries = { type: 'commitGroupDetails', payload: { commits: [
+  { id: 'b16a9821234567890', subject: 'Add login validation' }, { id: 'c16a9821234567890', subject: 'Add login form' },
+  { id: 'd16a9821234567890', subject: 'Connect login form' }, { id: 'e16a9821234567890', subject: 'Polish login errors' },
+  { id: 'f16a9821234567890', subject: 'Add login tests' }
+] } };
 window.__smokeGroupCommitDetails = { type: 'commitDetails', payload: { commit: { id: 'b16a9821234567890', subject: 'Add login validation' }, parent: 'c16a9821234567890', additions: 3, deletions: 1, files: [{ status: 'M', path: 'src/LoginForm.tsx', additions: 3, deletions: 1 }] } };
 
 let handledMenuRequests = 0;
@@ -63,4 +68,12 @@ setInterval(() => {
     item('compareCurrent', '現在のブランチと比較', 'compare', !isCurrent), item('selectCompareBase', '比較ベースとして選択', 'compare'), item('compareWith', '比較対象を選択…', 'compare'), item('showMergeBase', 'マージベースを表示', 'compare', !isCurrent), item('focus', 'このブランチにフォーカス', 'graph'), item('related', '関連するブランチのみ表示', 'graph'), item('checkout', 'チェックアウト', 'git', !isCurrent), item('createBranch', 'ここからブランチを作成…', 'git'), item('copyName', 'ブランチ名をコピー', 'copy')
   ];
   window.dispatchEvent(new MessageEvent('message', { data: { type: 'contextMenuItems', nodeId: request.nodeId, selectedRefs: request.selectedRefs, x: request.x, y: request.y, items } }));
+}, 20);
+
+let handledGroupSummaryRequests = 0;
+setInterval(() => {
+  const requests = window.__vscodeMessages.filter(message => message?.type === 'showCommitGroupDetails');
+  if (requests.length <= handledGroupSummaryRequests) return;
+  handledGroupSummaryRequests++;
+  window.dispatchEvent(new MessageEvent('message', { data: window.__smokeGroupCommitSummaries }));
 }, 20);

@@ -36,4 +36,14 @@ describe('DiffService', () => {
     expect(run).toHaveBeenNthCalledWith(3, ['diff-tree', '--root', '--first-parent', '--no-commit-id', '-r', '--name-status', '-z', 'f41acde1234567890', '--']);
     expect(run).toHaveBeenNthCalledWith(4, ['diff-tree', '--root', '--first-parent', '--no-commit-id', '-r', '--numstat', '-z', 'f41acde1234567890', '--']);
   });
+
+  it('loads subjects for a summarized commit group in the requested order', async () => {
+    const run = vi.fn().mockResolvedValue('c16a9821234567890\0Second change\nb16a9821234567890\0First change\n');
+    const service = new DiffService({ run } as unknown as GitClient);
+
+    await expect(service.commitSummaries(['b16a9821234567890', 'c16a9821234567890'])).resolves.toEqual([
+      { id: 'b16a9821234567890', subject: 'First change' }, { id: 'c16a9821234567890', subject: 'Second change' }
+    ]);
+    expect(run).toHaveBeenCalledWith(['show', '-s', '--format=%H%x00%s', 'b16a9821234567890', 'c16a9821234567890']);
+  });
 });

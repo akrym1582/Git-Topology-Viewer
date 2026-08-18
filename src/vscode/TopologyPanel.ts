@@ -76,6 +76,7 @@ export class TopologyPanel {
         this.post({ type: 'refLog', payload: await this.diff.branchLog(ref.fullName, this.historyBase(ref)) });
       }
       if (message.type === 'showCommitDetails') this.post({ type: 'commitDetails', payload: await this.diff.commitDetails(message.commit) });
+      if (message.type === 'showCommitGroupDetails') this.post({ type: 'commitGroupDetails', payload: { commits: await this.diff.commitSummaries(message.commits) } });
       if (message.type === 'switchBranch') await this.switchBranch(message.ref);
       if (message.type === 'mergeBranch') await this.mergeBranch(message.ref);
       if (message.type === 'openDiff') {
