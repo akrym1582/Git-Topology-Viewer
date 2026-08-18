@@ -148,6 +148,7 @@ try {
   await page.screenshot({ path: join(imageDir, 'smoke-branch-log.png'), fullPage: true });
 
   await page.getByRole('button', { name: 'feature/login ブランチ' }).click();
+  if (await page.locator('.inspector select').count()) throw new Error('Single-branch selection must not show the compare pane while history loads');
   request = await page.evaluate(() => window.__vscodeMessages.at(-1));
   if (request?.type !== 'showRefLog' || request.ref !== 'refs/heads/feature/login') throw new Error(`Unexpected feature history request: ${JSON.stringify(request)}`);
   await page.evaluate(() => window.dispatchEvent(new MessageEvent('message', { data: window.__smokeFeatureLog })));
