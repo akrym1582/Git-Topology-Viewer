@@ -173,7 +173,7 @@ function CommitGroupNode({ node, ui }: { node: CommitViewGraph['nodes'][number];
   const commitIds = node.commitIds ?? [];
   const first = commitIds[0]?.slice(0, 8) ?? '';
   const last = commitIds.at(-1)?.slice(0, 8) ?? '';
-  return <g className="node commit-group" transform={`translate(${node.x},${node.y})`} aria-label={ui.commitGroupAriaLabel(commitIds.length)}><circle r="32"/><text className="group-label" x="0" y="4" textAnchor="middle">{ui.commitGroup(commitIds.length)}</text><text className="group-range" x="44" y="4">{first} → {last}</text></g>;
+  return <g className="node commit-group" transform={`translate(${node.x},${node.y})`} aria-label={ui.commitGroupAriaLabel(commitIds.length)}><rect className="group-badge" x="-52" y="-15" width="104" height="30" rx="15"/><text className="group-label" x="0" y="4" textAnchor="middle">{ui.commitGroup(commitIds.length)}</text><text className="group-range" x="64" y="4">{first} → {last}</text></g>;
 }
 
 function RefNode({ gitRef, position, data, ui, selected, onSelect, onContextMenu }: { gitRef: GitRef; position: { x: number; y: number }; data: GraphPayload; ui: WebviewStrings; selected: Set<string>; onSelect: (ref: GitRef, additive: boolean) => void; onContextMenu: (ref: GitRef, event: MouseEvent) => void }) {
