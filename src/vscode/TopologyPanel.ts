@@ -286,7 +286,12 @@ export class TopologyPanel {
         'graph',
       ),
       item('related', this.t('Show Related Branches Only'), 'graph'),
-      item('checkout', this.t('Checkout'), 'git', local && this.currentBranch !== ref.name),
+      item(
+        'checkout',
+        this.t(ref.type === 'tag' ? 'Checkout (Detached)' : 'Checkout'),
+        'git',
+        (local && this.currentBranch !== ref.name) || ref.type === 'tag',
+      ),
       item('createBranch', this.t('Create Branch from Here…'), 'git'),
       item('copyName', this.t(ref.type === 'tag' ? 'Copy Tag Name' : 'Copy Branch Name'), 'copy'),
       item('copyHash', this.t('Copy Commit Hash'), 'copy'),
@@ -393,7 +398,16 @@ export class TopologyPanel {
       });
       this.sendGraph();
     }
-    if (command === 'checkout') await this.switchBranch(ref.fullName);
+    if (command === 'checkout') {
+      if (ref.type === 'tag') {
+        await this.runResult(
+          await this.commitOperations.checkoutDetached(ref.commitId),
+          this.t('Checked out {0} in detached HEAD state.', ref.name),
+        );
+      } else {
+        await this.switchBranch(ref.fullName);
+      }
+    }
     if (command === 'createBranch') await this.createBranch(ref);
     if (command === 'push') await this.push(ref);
     if (command === 'pull')
