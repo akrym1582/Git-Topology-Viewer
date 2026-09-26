@@ -33,4 +33,23 @@ describe('BranchStatusService', () => {
       'refs/heads/topic...origin/topic',
     ]);
   });
+
+  it('does not compare against an upstream remote branch that is not locally available', async () => {
+    const run = vi.fn().mockResolvedValueOnce('upstream/topic\n');
+    const service = new BranchStatusService({ run } as unknown as GitClient);
+
+    await expect(
+      service.load([
+        { name: 'topic', fullName: 'refs/heads/topic', type: 'localBranch', commitId: 'local' },
+      ]),
+    ).resolves.toEqual([
+      {
+        ref: 'refs/heads/topic',
+        local: true,
+        remote: false,
+        upstream: 'upstream/topic',
+      },
+    ]);
+    expect(run).toHaveBeenCalledTimes(1);
+  });
 });

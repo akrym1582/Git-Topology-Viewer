@@ -19,6 +19,7 @@ export class BranchStatusService {
     status.remote = refs.some(
       (candidate) => candidate.type === 'remoteBranch' && candidate.name === upstream,
     );
+    if (!status.remote) return status;
     const counts = (
       await this.git.run(['rev-list', '--left-right', '--count', `${ref.fullName}...${upstream}`])
     )
